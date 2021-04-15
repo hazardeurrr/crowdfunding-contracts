@@ -4,7 +4,7 @@ import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
 contract Campain {
 
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     enum State {
         Fundraising,
@@ -18,6 +18,7 @@ contract Campain {
     uint public goal;
     uint256 public balance;
     State public state;
+    address public owner; 
 
     // Starting and ending date for the campain
     uint public startTimestamp;
@@ -30,6 +31,8 @@ contract Campain {
 
     // Event triggered when the creator has been paid
     event CreatorPaid(address creator, uint total_amount);
+
+    event Refund(address from, uint refundAmount);
 
     modifier changeState(State state_) {
         require(state != state_, 'State must be different');
@@ -70,19 +73,45 @@ contract Campain {
             startTimestamp = startTimestamp_;
             endTimestamp = endTimestamp_;
             state = State.Fundraising;
+            owner = creator;
+            balance = 0;
     }
 
     function payCreator() public verifyState(State.Successfull) verifyOwner(msg.sender) {
+        require(balance > 0, 'Balance cannot be empty');
         creator.transfer(balance);
         balance = 0;
         emit CreatorPaid(msg.sender, balance);
     }
 
-    function participate() payable external verifyState(State.Fundraising) {
+    function participate() payable external verifyState(State.Fundraising) returns(bool success) {
         require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campain');
+        require(block.timestamp >= startTimestamp, 'The campain has not started yet');
+        require(msg.value > 0, 'Amount cannot be less or equal to zero');
+        if (block.timestamp > endTimestamp) {
+            state = State.Expired;
+            return false;
+        }
+        balance += msg.value;
+        contributions[msg.sender] += msg.value;
         emit Participation(msg.sender, campain_id, msg.value, balance);
+        return true;
     }
 
-    function 
+    function getRefund() public verifyState(State.Expired) {
+        require(msg.sender != creator, 'No refund for the creator');
+        require(contributions[msg.sender] > 0, 'You have not participated in the campain');
+        payable(msg.sender).transfer(contributions[msg.sender]);
+        emit Refund(msg.sender, contributions[msg.sender]);
+    }
+
+    function endCampain() public verifyOwner(msg.sender) {
+        state = State.Expired; 
+    }
+
+    receive() external payable {
+        revert();
+    }
+    
 
 }
