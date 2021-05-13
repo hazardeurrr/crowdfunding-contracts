@@ -16,7 +16,7 @@ contract Campain {
     uint public campain_id;
     address payable public creator;
     uint public goal;
-    uint256 public balance;
+    uint256 public totalBalance;
     State public state;
     address public owner;
     bool public partialGoal;
@@ -32,15 +32,22 @@ contract Campain {
     mapping(address => uint) public contributions;
     mapping(address => uint) public contributionsTiers;
 
+    // **************************** //
+    // *         Events           * //
+    // **************************** //
     event CampainCreated(address creator, uint timestamp, uint goal);
 
     // Participation from an address
-    event Participation(address from, uint campain_id, uint amount, uint balance);
+    event Participation(address from, uint campain_id, uint amount, uint totalBalance);
 
     // Event triggered when the creator has been paid
     event CreatorPaid(address creator, uint total_amount);
 
     event Refund(address from, uint refundAmount);
+
+    // **************************** //
+    // *         Modifiers        * //
+    // **************************** //
 
     modifier changeState(State state_) {
         require(state != state_, 'State must be different');
@@ -85,9 +92,9 @@ contract Campain {
             endTimestamp = endTimestamp_;
             state = State.Fundraising;
             owner = creator;
-            balance = 0;
+            totalBalance = 0;
             partialGoal = partialGoal_;
-            require(tiers_.length == nbTiers_, 'Numbers of tiers dont match the tiers list');
+            require(tiers_.length == nbTiers_, 'Numbers of tiers dont match the tiers list length');
             nbTiers = nbTiers_;
             tiers = tiers_;
             emit CampainCreated(creator, block.timestamp, goal);
@@ -95,13 +102,13 @@ contract Campain {
 
     function payCreator() public verifyOwner(msg.sender) {
         require(block.timestamp > endTimestamp, 'The campain has not ended yet');
-        require(balance > 0, 'Balance cannot be empty');
-        creator.transfer(balance);
-        balance = 0;
-        emit CreatorPaid(msg.sender, balance);
+        require(totalBalance > 0, 'totalBalance cannot be empty');
+        creator.transfer(totalBalance);
+        totalBalance = 0;
+        emit CreatorPaid(msg.sender, totalBalance);
     }
 
-    function participate() payable external verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
+    function participate() payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
         require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campain');
         require(block.timestamp >= startTimestamp, 'The campain has not started yet');
         require(msg.value > 0, 'Amount cannot be less or equal to zero');
@@ -110,14 +117,14 @@ contract Campain {
             revert();
         }
 
-        //  adding the transaction value to the balance
-        balance += msg.value;
+        //  adding the transaction value to the totalBalance
+        totalBalance += msg.value;
         contributions[msg.sender] += msg.value;
         
         // setting up the tiers for the transaction
         setTiers(msg.sender, msg.value);
         
-        emit Participation(msg.sender, campain_id, msg.value, balance);
+        emit Participation(msg.sender, campain_id, msg.value, totalBalance);
         return true;
     }
 
@@ -125,11 +132,13 @@ contract Campain {
         require(msg.sender != creator, 'No refund for the creator');
         require(contributions[msg.sender] > 0, 'You have not participated in the campain');
         payable(msg.sender).transfer(contributions[msg.sender]);
+        contributions[msg.sender] = 0;
         emit Refund(msg.sender, contributions[msg.sender]);
     }
 
+    // Send ether to the contract
     receive() external payable {
-        revert();
+        participate();
     }
 
     /**
