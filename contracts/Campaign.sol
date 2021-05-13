@@ -2,7 +2,7 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
-contract Campain {
+contract Campaign {
 
     using SafeMath for uint256;
 
@@ -12,16 +12,17 @@ contract Campain {
         Expired
     }
 
-    // General information about the campain
-    uint public campain_id;
+    // General information about the campaign
+    uint public campaign_id;
     address payable public creator;
     uint public goal;
     uint256 public totalBalance;
     State public state;
     address public owner;
+    address public campaign_address;
     bool public partialGoal;
 
-    // Starting and ending date for the campain
+    // Starting and ending date for the campaign
     uint public startTimestamp;
     uint public endTimestamp;
 
@@ -35,10 +36,10 @@ contract Campain {
     // **************************** //
     // *         Events           * //
     // **************************** //
-    event CampainCreated(address creator, uint timestamp, uint goal);
+    event CampaignCreated(address creator, uint timestamp, uint goal);
 
     // Participation from an address
-    event Participation(address from, uint campain_id, uint amount, uint totalBalance);
+    event Participation(address from, uint campaign_id, uint amount, uint totalBalance);
 
     // Event triggered when the creator has been paid
     event CreatorPaid(address creator, uint total_amount);
@@ -71,13 +72,13 @@ contract Campain {
     }
 
     modifier verifyOwner(address owner_) {
-        require(msg.sender == owner_, '[FORBIDDEN] You are not the owner of the campain');
+        require(msg.sender == owner_, '[FORBIDDEN] You are not the owner of the campaign');
         _;
     }
 
     constructor(
         address payable creator_,
-        uint campain_id_,
+        uint campaign_id_,
         uint goal_,
         uint startTimestamp_,
         uint endTimestamp_,
@@ -86,7 +87,7 @@ contract Campain {
         uint[] memory tiers_
         ) {
             creator = creator_;
-            campain_id = campain_id_;
+            campaign_id = campaign_id_;
             goal = goal_;
             startTimestamp = startTimestamp_;
             endTimestamp = endTimestamp_;
@@ -97,11 +98,12 @@ contract Campain {
             require(tiers_.length == nbTiers_, 'Numbers of tiers dont match the tiers list length');
             nbTiers = nbTiers_;
             tiers = tiers_;
-            emit CampainCreated(creator, block.timestamp, goal);
+            campaign_address = address(this);
+            emit CampaignCreated(creator, block.timestamp, goal);
     }
 
     function payCreator() public verifyOwner(msg.sender) {
-        require(block.timestamp > endTimestamp, 'The campain has not ended yet');
+        require(block.timestamp > endTimestamp, 'The campaign has not ended yet');
         require(totalBalance > 0, 'totalBalance cannot be empty');
         creator.transfer(totalBalance);
         totalBalance = 0;
@@ -109,8 +111,8 @@ contract Campain {
     }
 
     function participate() payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
-        require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campain');
-        require(block.timestamp >= startTimestamp, 'The campain has not started yet');
+        require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campaign');
+        require(block.timestamp >= startTimestamp, 'The campaign has not started yet');
         require(msg.value > 0, 'Amount cannot be less or equal to zero');
         if (block.timestamp > endTimestamp) {
             state = State.Expired;
@@ -124,13 +126,13 @@ contract Campain {
         // setting up the tiers for the transaction
         setTiers(msg.sender, msg.value);
         
-        emit Participation(msg.sender, campain_id, msg.value, totalBalance);
+        emit Participation(msg.sender, campaign_id, msg.value, totalBalance);
         return true;
     }
 
     function getRefund() public verifyState(State.Expired) {
         require(msg.sender != creator, 'No refund for the creator');
-        require(contributions[msg.sender] > 0, 'You have not participated in the campain');
+        require(contributions[msg.sender] > 0, 'You have not participated in the campaign');
         payable(msg.sender).transfer(contributions[msg.sender]);
         contributions[msg.sender] = 0;
         emit Refund(msg.sender, contributions[msg.sender]);

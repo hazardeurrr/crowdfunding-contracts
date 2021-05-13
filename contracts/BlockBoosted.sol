@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
-contract BlockBooster is ERC20 {
+contract BlockBoosted is ERC20 {
     using SafeMath for uint256;
     uint256 public _totalSupply;
 
@@ -14,9 +14,9 @@ contract BlockBooster is ERC20 {
      *
      * Initializes contract with initial supply tokens to the creator of the contract
      */
-    constructor() ERC20('BlockBooster', 'BBST'){
+    constructor() ERC20('BlockBoosted', 'BBST'){
         
-        _totalSupply = 100000000000000000000000000;
+        _totalSupply = 20000000;
 
         balances[msg.sender] = _totalSupply;
         emit Transfer(address(0), msg.sender, _totalSupply);
@@ -53,5 +53,11 @@ contract BlockBooster is ERC20 {
         balances[to] = SafeMath.add(balances[to], tokens);
         emit Transfer(from, to, tokens);
         return true;
+    }
+
+    function claimToken() payable public {
+
+        transfer(msg.sender, 10);
+
     }
 }
