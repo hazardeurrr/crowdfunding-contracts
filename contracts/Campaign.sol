@@ -1,16 +1,20 @@
 pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+
 
 contract Campaign {
 
     using SafeMath for uint256;
-
+    using SafeERC20 for IERC20;
     enum State {
         Fundraising,
         Successfull,
         Expired
     }
+
+    
 
     // General information about the campaign
     uint public campaign_id;
@@ -21,6 +25,7 @@ contract Campaign {
     address public owner;
     address public campaign_address;
     bool public partialGoal;
+    IERC20 private token;
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -28,7 +33,7 @@ contract Campaign {
 
     // Tiers
     uint nbTiers;
-    uint[] tiers;
+    [[uint, uint]] tiers;
 
     mapping(address => uint) public contributions;
     mapping(address => uint) public contributionsTiers;
@@ -45,6 +50,7 @@ contract Campaign {
     event CreatorPaid(address creator, uint total_amount);
 
     event Refund(address from, uint refundAmount);
+    
 
     // **************************** //
     // *         Modifiers        * //
@@ -84,7 +90,8 @@ contract Campaign {
         uint endTimestamp_,
         bool partialGoal_,
         uint nbTiers_,
-        uint[] memory tiers_
+        IERC20 token_,
+        [uint, uint}] memory tiers_
         ) {
             creator = creator_;
             campaign_id = campaign_id_;
@@ -98,6 +105,7 @@ contract Campaign {
             require(tiers_.length == nbTiers_, 'Numbers of tiers dont match the tiers list length');
             nbTiers = nbTiers_;
             tiers = tiers_;
+            token = token_;
             campaign_address = address(this);
             emit CampaignCreated(creator, block.timestamp, goal);
     }
@@ -118,7 +126,6 @@ contract Campaign {
             state = State.Expired;
             revert();
         }
-
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
         contributions[msg.sender] += msg.value;
@@ -148,9 +155,10 @@ contract Campaign {
      */
 
     function setTiers(address from, uint amount) internal {
-        for (uint i = nbTiers; i > 0; i--) {
-            if (amount >= tiers[i]) {
+        for (uint i = 0; i < nbTiers; i++) {
+            if (amount == tiers[i][0]) {
                 contributionsTiers[from] = i;
+                SafeMath.sub(tiers[i][1], 1)
             }
         }
     }

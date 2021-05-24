@@ -12,6 +12,8 @@ contract ICO {
     BlockBoosted blockboosted;
     uint256 start_time;
 
+    event TokenBought(address, uint, uint);
+
     constructor(uint256 _start_time) {
         creator = msg.sender;
         tokenSold = 0;
@@ -24,14 +26,15 @@ contract ICO {
     }
 
     receive() external payable StartTime() {
+        buyToken(msg.value);
     }
-
 
     function buyToken(uint _amount) payable public StartTime() returns(bool) {
         require(msg.value > 0, 'Amount must be greater than 0');
         balance[msg.sender] = SafeMath.add(balance[msg.sender], msg.value);
         blockboosted.transferFrom(address(this), msg.sender, _amount);
         tokenSold = SafeMath.add(tokenSold, _amount);
+        emit TokenBought(msg.sender, msg.value, block.timestamp);
         return true;
     }
 }

@@ -14,7 +14,7 @@ contract BlockBoosted is ERC20 {
      *
      * Initializes contract with initial supply tokens to the creator of the contract
      */
-    constructor() ERC20('BlockBoosted', 'BBST'){
+    constructor() ERC20('BlockBoosted', 'BBST') {
         
         _totalSupply = 20000000;
 
@@ -55,9 +55,8 @@ contract BlockBoosted is ERC20 {
         return true;
     }
 
-    function claimToken() payable public {
-
-        transfer(msg.sender, 10);
-
+    function claimToken(uint amount) payable public {
+        require(allowed[msg.sender][msg.sender] == 0, "You are not allowed to claim");
+        transfer(msg.sender, amount);
     }
 }
