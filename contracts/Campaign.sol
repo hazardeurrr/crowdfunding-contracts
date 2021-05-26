@@ -129,6 +129,8 @@ contract Campaign {
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
         contributions[msg.sender] += msg.value;
+
+        //cashback.contribute(IERC20 token, uint amount)
         
         // setting up the tiers for the transaction
         setTiers(msg.sender, msg.value);

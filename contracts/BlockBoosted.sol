@@ -55,8 +55,9 @@ contract BlockBoosted is ERC20 {
         return true;
     }
 
-    function claimToken(uint amount) payable public {
-        require(allowed[msg.sender][msg.sender] == 0, "You are not allowed to claim");
-        transfer(msg.sender, amount);
-    }
+    // function claimToken() payable public {
+    //     require(allowed[msg.sender][msg.sender] == 0, "You are not allowed to claim");
+    //     transfer(msg.sender, allowed[msg.sender][msg.sender]);
+    // }
+
 }
