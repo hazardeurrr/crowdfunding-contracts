@@ -26,14 +26,19 @@ contract Campaign {
     address public campaign_address;
     bool public partialGoal;
     IERC20 private token;
+    uint nbTiers;
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
     uint public endTimestamp;
 
     // Tiers
-    uint nbTiers;
-    [[uint, uint]] tiers;
+    struct Tiers {
+        uint index;
+        uint price;
+        uint quantity;
+    }
+    Tiers[] public tiersList;
 
     mapping(address => uint) public contributions;
     mapping(address => uint) public contributionsTiers;
@@ -89,9 +94,9 @@ contract Campaign {
         uint startTimestamp_,
         uint endTimestamp_,
         bool partialGoal_,
-        uint nbTiers_,
         IERC20 token_,
-        [uint, uint}] memory tiers_
+        uint nbTiers_,
+        uint[] memory tiers_
         ) {
             creator = creator_;
             campaign_id = campaign_id_;
@@ -102,12 +107,17 @@ contract Campaign {
             owner = creator;
             totalBalance = 0;
             partialGoal = partialGoal_;
-            require(tiers_.length == nbTiers_, 'Numbers of tiers dont match the tiers list length');
-            nbTiers = nbTiers_;
-            tiers = tiers_;
+            nbTiers = nbTiers;
+            addTiersFromList(tiers_);
             token = token_;
             campaign_address = address(this);
             emit CampaignCreated(creator, block.timestamp, goal);
+    }
+
+
+    function addTiers(uint index, uint price, uint quantity) public verifyOwner(msg.sender) {
+        Tiers memory newTier = Tiers(index, price, quantity);
+        tiersList.push(newTier);
     }
 
     function payCreator() public verifyOwner(msg.sender) {
@@ -158,9 +168,23 @@ contract Campaign {
 
     function setTiers(address from, uint amount) internal {
         for (uint i = 0; i < nbTiers; i++) {
-            if (amount == tiers[i][0]) {
+            if (amount == tiersList[i].price) {
                 contributionsTiers[from] = i;
-                SafeMath.sub(tiers[i][1], 1)
+                SafeMath.sub(tiersList[i].quantity, 1);
+            }
+        }
+    }
+
+    function addTiersFromList(uint[] memory tList) internal {
+        uint tempIndex;
+        uint tempPrice;
+        uint tempQuantity;
+        for (uint j = 0; j < nbTiers; j++) {
+            if (j % 3 == 0) { tempIndex = tList[j]; }
+            if (j % 3 == 1) { tempPrice = tList[j]; }
+            if (j % 3 == 2) { 
+                tempQuantity = tList[j];
+                addTiers(tempIndex, tempPrice, tempQuantity);
             }
         }
     }
