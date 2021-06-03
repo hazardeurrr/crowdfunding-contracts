@@ -16,9 +16,9 @@ contract Cashback {
     uint public priceBBST;
     uint public priceETH;
     uint public priceUSDT;
-    uint public poidsBBST;
-    uint public poidsETH;
-    uint public poidsUSDT;
+    uint public poidsBBST = 1.5;
+    uint public poidsETH = 1;
+    uint public poidsUSDT = 1;
 
     // Une fois par semaine appel de l'oracle
     // set des prices
@@ -80,10 +80,8 @@ contract Cashback {
     }
     
     function claimToken() payable public {
-      /*
       if(balancesToBeClaimed[msg.sender] != 0)
-        transfer(to: msg.sender, amount: balancesToBeClaimed[msg.sender])
-      */
+        bbst.transfer(msg.sender, balancesToBeClaimed[msg.sender]);
     }
 
     function updateCashbackByAddress(address sender, uint amount) public {

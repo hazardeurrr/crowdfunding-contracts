@@ -27,6 +27,7 @@ contract Campaign {
     bool public partialGoal;
     IERC20 private token;
     uint nbTiers;
+    Cashback cbk;
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -140,7 +141,7 @@ contract Campaign {
         totalBalance += msg.value;
         contributions[msg.sender] += msg.value;
 
-        //cashback.contribute(IERC20 token, uint amount)
+        cbk.contribute(msg.sender, amount, token);
         
         // setting up the tiers for the transaction
         setTiers(msg.sender, msg.value);
