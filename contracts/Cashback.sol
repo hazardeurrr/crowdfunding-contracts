@@ -24,7 +24,7 @@ contract Cashback {
     // set des prices
 
     mapping(address => uint) public balancesToBeClaimed;
-    mapping(address => uint) public totalTransactionWeekly;
+    mapping(address => uint) private totalTransactionWeekly;
     address[] public listClaimers;
     BlockBoosted bbst;
 
@@ -35,12 +35,14 @@ contract Cashback {
       totalOfWeek = 0;
     }
 
-    function contribute(address contributor, uint amount, IERC20 token) public {
+    function contributeInERC20(address contributor, uint amount, IERC20 token) public {
         if (token == BBST) {
+          abi.encode(address(token)) == "0xjkegorijegoirjgoierg5486z6g46e54g");
           updateCashbackByAddress(contributor, amount * priceBBST * poidsBBST);
         }
         else if (token == ETH) {
           updateCashbackByAddress(contributor, amount * priceETH * poidsETH);
+          // USDT contract 0xdac17f958d2ee523a2206206994597c13d831ec7
         }
         else {
           updateCashbackByAddress(contributor, amount * poidsUSDT);
@@ -66,7 +68,10 @@ contract Cashback {
           address addr = listClaimers[i];
 
           balancesToBeClaimed[addr] += (totalTransactionWeekly[addr] / totalOfWeek) * toBeDistributed;
+          totalTransactionWeekly[addr] = 0;
         }
+
+        listClaimers = [];
 
         // foreach(address in totalTransactionWeekly) {
         //   balancesToBeClaimed[address] += (totalTransactionWeekly[address] / totalOfWeek) * toBeDistributed

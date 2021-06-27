@@ -8,10 +8,18 @@ contract Campaign {
 
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    
     enum State {
+        // Campaign has not started yet
+        NotStarted,
+        // Campaign is raising funds
         Fundraising,
+        // Campaign reached its goal
         Successfull,
-        Expired
+        // Campaign has not reached its goal
+        Refund,
+        // Campaign has been canceled
+        Canceled
     }
 
     
@@ -27,7 +35,6 @@ contract Campaign {
     bool public partialGoal;
     IERC20 private token;
     uint nbTiers;
-    Cashback cbk;
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -47,7 +54,7 @@ contract Campaign {
     // **************************** //
     // *         Events           * //
     // **************************** //
-    event CampaignCreated(address creator, uint timestamp, uint goal);
+    event CampaignCreated(address creator, uint timestamp, uint goal, IERC20 token);
 
     // Participation from an address
     event Participation(address from, uint campaign_id, uint amount, uint totalBalance);
@@ -108,11 +115,11 @@ contract Campaign {
             owner = creator;
             totalBalance = 0;
             partialGoal = partialGoal_;
-            nbTiers = nbTiers;
+            nbTiers = nbTiers_;
             addTiersFromList(tiers_);
             token = token_;
             campaign_address = address(this);
-            emit CampaignCreated(creator, block.timestamp, goal);
+            emit CampaignCreated(creator, block.timestamp, goal, token);
     }
 
 
@@ -129,19 +136,23 @@ contract Campaign {
         emit CreatorPaid(msg.sender, totalBalance);
     }
 
-    function participate() payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
+    function participateInETH() payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
         require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campaign');
         require(block.timestamp >= startTimestamp, 'The campaign has not started yet');
         require(msg.value > 0, 'Amount cannot be less or equal to zero');
-        if (block.timestamp > endTimestamp) {
-            state = State.Expired;
+        if (block.timestamp > endTimestamp && goal > totalBalance) {
+            state = State.Successfull;
             revert();
+        }
+        if (block.timestamp > endTimestamp && goal > totalBalance) {
+                state = State.Successfull;
+                revert();
         }
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
         contributions[msg.sender] += msg.value;
-
-        cbk.contribute(msg.sender, amount, token);
+        
+        // cbk.contribute(msg.sender, amount, token);
         
         // setting up the tiers for the transaction
         setTiers(msg.sender, msg.value);
@@ -150,7 +161,35 @@ contract Campaign {
         return true;
     }
 
-    function getRefund() public verifyState(State.Expired) {
+
+    function participateInERC20(uint256 amount) payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
+            require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campaign');
+            require(block.timestamp >= startTimestamp, 'The campaign has not started yet');
+            require(amount > 0, 'Amount cannot be less or equal to zero');
+            if (block.timestamp > endTimestamp && goal > totalBalance) {
+                state = State.Refund;
+                revert();
+            }
+            if (block.timestamp > endTimestamp && goal > totalBalance) {
+                state = State.Successfull;
+                revert();
+            }
+            //  adding the transaction value to the totalBalance
+            require(token.balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
+            token.transferFrom(msg.sender, address(this), amount);
+            totalBalance += amount;
+            contributions[msg.sender] += amount;
+            
+            // cbk.contribute(msg.sender, amount, token);
+            
+            // setting up the tiers for the transaction
+            setTiers(msg.sender, amount);
+            
+            emit Participation(msg.sender, campaign_id, amount, totalBalance);
+            return true;
+        }
+    
+    function refund() public verifyState(State.Refund) {
         require(msg.sender != creator, 'No refund for the creator');
         require(contributions[msg.sender] > 0, 'You have not participated in the campaign');
         payable(msg.sender).transfer(contributions[msg.sender]);
@@ -160,12 +199,12 @@ contract Campaign {
 
     // Send ether to the contract
     receive() external payable {
-        participate();
+        participateInETH();
     }
 
-    /**
-        Internal function
-     */
+    // **************************** //
+    // *   Internal Function      * //
+    // **************************** //
 
     function setTiers(address from, uint amount) internal {
         for (uint i = 0; i < nbTiers; i++) {
