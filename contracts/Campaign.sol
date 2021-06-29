@@ -142,10 +142,13 @@ contract Campaign {
         require(msg.value > 0, 'Amount cannot be less or equal to zero');
         if (block.timestamp > endTimestamp && goal > totalBalance) {
             state = State.Successfull;
+            // [HLI] Ici je ne pense pas que ça fonctionne. Revert() va annuler l'ensemble de ce qui s'est passé dans la tx.
+            // L'état du contrat reviendra à son état initial, et 'state' ne sera pas modifié.
             revert();
         }
         if (block.timestamp > endTimestamp && goal > totalBalance) {
                 state = State.Successfull;
+                // [HLI] Même remarque
                 revert();
         }
         //  adding the transaction value to the totalBalance
@@ -168,13 +171,17 @@ contract Campaign {
             require(amount > 0, 'Amount cannot be less or equal to zero');
             if (block.timestamp > endTimestamp && goal > totalBalance) {
                 state = State.Refund;
+                // [HLI] Meme remarque que dans participateInETH()
+                // Vous devriez peut être mettre ces fonctions dans une fonction de controle séparée pour ne pas dupliquer la logique
                 revert();
             }
             if (block.timestamp > endTimestamp && goal > totalBalance) {
                 state = State.Successfull;
+                // [HLI] Pareil
                 revert();
             }
             //  adding the transaction value to the totalBalance
+            // [HLI] J'imagine que vous avez implémenté l'appele de "approve" dans votre UX
             require(token.balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
             token.transferFrom(msg.sender, address(this), amount);
             totalBalance += amount;
@@ -192,8 +199,16 @@ contract Campaign {
     function refund() public verifyState(State.Refund) {
         require(msg.sender != creator, 'No refund for the creator');
         require(contributions[msg.sender] > 0, 'You have not participated in the campaign');
+        // [HLI] Ici vous avez une vulnérabilité aux reentrancy attacks.
+        // https://quantstamp.com/blog/what-is-a-re-entrancy-attack
         payable(msg.sender).transfer(contributions[msg.sender]);
         contributions[msg.sender] = 0;
+        // Une proposition
+        // uint myContribution = contributions[msg.sender];
+        // contributions[msg.sender] = 0;
+        // payable(msg.sender).transfer(myContribution);
+        
+
         emit Refund(msg.sender, contributions[msg.sender]);
     }
 
