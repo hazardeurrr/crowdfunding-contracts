@@ -10,15 +10,10 @@ contract Campaign {
     using SafeERC20 for IERC20;
     
     enum State {
-        // Campaign has not started yet
         NotStarted,
-        // Campaign is raising funds
         Fundraising,
-        // Campaign reached its goal
         Successfull,
-        // Campaign has not reached its goal
         Refund,
-        // Campaign has been canceled
         Canceled
     }
 
@@ -115,11 +110,24 @@ contract Campaign {
             owner = creator;
             totalBalance = 0;
             partialGoal = partialGoal_;
+            require(nbTiers == tiers_.length, 'Not compatible');
             nbTiers = nbTiers_;
             addTiersFromList(tiers_);
-            token = token_;
+            if (token_ == IERC20(address(0))) {
+                
+            } else {
+                token = token_;    
+                bool tokenApproval = approveCrowdfunding(token);
+                require(tokenApproval, '[WARNING] Approval denied');
+            }
             campaign_address = address(this);
             emit CampaignCreated(creator, block.timestamp, goal, token);
+    }
+    
+    function approveCrowdfunding(IERC20 tokenCrowdfunding) public returns(bool) {
+        uint allowance = tokenCrowdfunding.balanceOf(msg.sender);
+        bool success = tokenCrowdfunding.approve(address(msg.sender), allowance);
+        return success;
     }
 
 
@@ -140,16 +148,16 @@ contract Campaign {
         require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campaign');
         require(block.timestamp >= startTimestamp, 'The campaign has not started yet');
         require(msg.value > 0, 'Amount cannot be less or equal to zero');
-        if (block.timestamp > endTimestamp && goal > totalBalance) {
+        if (block.timestamp > endTimestamp && goal < totalBalance) {
             state = State.Successfull;
             // [HLI] Ici je ne pense pas que ça fonctionne. Revert() va annuler l'ensemble de ce qui s'est passé dans la tx.
             // L'état du contrat reviendra à son état initial, et 'state' ne sera pas modifié.
-            revert();
+            return false;
         }
         if (block.timestamp > endTimestamp && goal > totalBalance) {
                 state = State.Successfull;
                 // [HLI] Même remarque
-                revert();
+                return false;
         }
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
@@ -166,19 +174,20 @@ contract Campaign {
 
 
     function participateInERC20(uint256 amount) payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
+            require(token != IERC20(address(0)), '[UNAUTHORIZED] This campaign can only be funded using the correct IERC20');
             require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campaign');
             require(block.timestamp >= startTimestamp, 'The campaign has not started yet');
             require(amount > 0, 'Amount cannot be less or equal to zero');
-            if (block.timestamp > endTimestamp && goal > totalBalance) {
+            if (block.timestamp > endTimestamp && goal < totalBalance) {
                 state = State.Refund;
                 // [HLI] Meme remarque que dans participateInETH()
                 // Vous devriez peut être mettre ces fonctions dans une fonction de controle séparée pour ne pas dupliquer la logique
-                revert();
+                return false;
             }
             if (block.timestamp > endTimestamp && goal > totalBalance) {
                 state = State.Successfull;
                 // [HLI] Pareil
-                revert();
+                return false;
             }
             //  adding the transaction value to the totalBalance
             // [HLI] J'imagine que vous avez implémenté l'appele de "approve" dans votre UX
@@ -201,12 +210,10 @@ contract Campaign {
         require(contributions[msg.sender] > 0, 'You have not participated in the campaign');
         // [HLI] Ici vous avez une vulnérabilité aux reentrancy attacks.
         // https://quantstamp.com/blog/what-is-a-re-entrancy-attack
-        payable(msg.sender).transfer(contributions[msg.sender]);
+        
+        uint myContribution = contributions[msg.sender];
         contributions[msg.sender] = 0;
-        // Une proposition
-        // uint myContribution = contributions[msg.sender];
-        // contributions[msg.sender] = 0;
-        // payable(msg.sender).transfer(myContribution);
+        payable(msg.sender).transfer(myContribution);
         
 
         emit Refund(msg.sender, contributions[msg.sender]);
