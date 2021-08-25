@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 
 contract Campaign {
@@ -65,28 +65,28 @@ contract Campaign {
     // **************************** //
 
     modifier changeState(State state_) {
-        require(state != state_, 'State must be different');
+        require(state != state_, "State must be different");
         state = state_;
         _;
     }
 
     modifier verifyState(State state_) {
-        require(state == state_, 'State must be the same');
+        require(state == state_, "State must be the same");
         _;
     }
 
     modifier validAddress(address from) {
-        require(from != address(0), 'Cannot be the address(0)');
+        require(from != address(0), "Cannot be the address(0)");
         _;
     }
 
     modifier validAmount(uint amount_) {
-        require(amount_ > 0, 'Amount cannot be equal or less than 0');
+        require(amount_ > 0, "Amount cannot be equal or less than 0");
         _;
     }
 
     modifier verifyOwner(address owner_) {
-        require(msg.sender == owner_, '[FORBIDDEN] You are not the owner of the campaign');
+        require(msg.sender == owner_, "[FORBIDDEN] You are not the owner of the campaign");
         _;
     }
 
@@ -110,7 +110,7 @@ contract Campaign {
             owner = creator;
             totalBalance = 0;
             partialGoal = partialGoal_;
-            require(nbTiers == tiers_.length, 'Not compatible');
+            require(nbTiers == tiers_.length, "Not compatible");
             nbTiers = nbTiers_;
             addTiersFromList(tiers_);
             if (token_ == IERC20(address(0))) {
@@ -118,7 +118,7 @@ contract Campaign {
             } else {
                 token = token_;    
                 bool tokenApproval = approveCrowdfunding(token);
-                require(tokenApproval, '[WARNING] Approval denied');
+                require(tokenApproval, "[WARNING] Approval denied");
             }
             campaign_address = address(this);
             emit CampaignCreated(creator, block.timestamp, goal, token);
@@ -137,17 +137,17 @@ contract Campaign {
     }
 
     function payCreator() public verifyOwner(msg.sender) {
-        require(block.timestamp > endTimestamp, 'The campaign has not ended yet');
-        require(totalBalance > 0, 'totalBalance cannot be empty');
+        require(block.timestamp > endTimestamp, "The campaign has not ended yet");
+        require(totalBalance > 0, "totalBalance cannot be empty");
         creator.transfer(totalBalance);
         totalBalance = 0;
         emit CreatorPaid(msg.sender, totalBalance);
     }
 
     function participateInETH() payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
-        require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campaign');
-        require(block.timestamp >= startTimestamp, 'The campaign has not started yet');
-        require(msg.value > 0, 'Amount cannot be less or equal to zero');
+        require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
+        require(block.timestamp >= startTimestamp, "The campaign has not started yet");
+        require(msg.value > 0, "Amount cannot be less or equal to zero");
         if (block.timestamp > endTimestamp && goal < totalBalance) {
             state = State.Successfull;
             // [HLI] Ici je ne pense pas que ça fonctionne. Revert() va annuler l'ensemble de ce qui s'est passé dans la tx.
@@ -174,10 +174,10 @@ contract Campaign {
 
 
     function participateInERC20(uint256 amount) payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
-            require(token != IERC20(address(0)), '[UNAUTHORIZED] This campaign can only be funded using the correct IERC20');
-            require(msg.sender != creator, '[FORBIDDEN] The creator cannot fundraise his own campaign');
-            require(block.timestamp >= startTimestamp, 'The campaign has not started yet');
-            require(amount > 0, 'Amount cannot be less or equal to zero');
+            require(token != IERC20(address(0)), "[UNAUTHORIZED] This campaign can only be funded using the correct IERC20");
+            require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
+            require(block.timestamp >= startTimestamp, "The campaign has not started yet");
+            require(amount > 0, "Amount cannot be less or equal to zero");
             if (block.timestamp > endTimestamp && goal < totalBalance) {
                 state = State.Refund;
                 // [HLI] Meme remarque que dans participateInETH()
@@ -206,8 +206,8 @@ contract Campaign {
         }
     
     function refund() public verifyState(State.Refund) {
-        require(msg.sender != creator, 'No refund for the creator');
-        require(contributions[msg.sender] > 0, 'You have not participated in the campaign');
+        require(msg.sender != creator, "No refund for the creator");
+        require(contributions[msg.sender] > 0, "You have not participated in the campaign");
         // [HLI] Ici vous avez une vulnérabilité aux reentrancy attacks.
         // https://quantstamp.com/blog/what-is-a-re-entrancy-attack
         

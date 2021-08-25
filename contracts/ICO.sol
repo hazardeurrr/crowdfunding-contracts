@@ -12,7 +12,9 @@ contract ICO {
     BlockBoosted blockboosted;
     uint256 start_time;
 
-    event TokenBought(address, uint, uint);
+    uint256 private ratio;
+    uint private threshold;
+    event TokenBought(address buyer, uint amountInETH, uint amountInBBST);
 
     constructor(uint256 _start_time) {
         creator = msg.sender;
@@ -26,15 +28,26 @@ contract ICO {
     }
 
     receive() external payable StartTime() {
-        buyToken(msg.value);
+        buyToken();
     }
 
-    function buyToken(uint _amount) payable public StartTime() returns(bool) {
+    /**
+        This function sends BBST in exchange of ETH
+        ratio : multiplier for increasing the price of BBST against ETH
+        threshold : to be set, once triggered the ratio changes
+     */
+    function buyToken() payable public StartTime() returns(bool success) {
         require(msg.value > 0, 'Amount must be greater than 0');
-        balance[msg.sender] = SafeMath.add(balance[msg.sender], msg.value);
-        blockboosted.transferFrom(address(this), msg.sender, _amount);
-        tokenSold = SafeMath.add(tokenSold, _amount);
-        emit TokenBought(msg.sender, msg.value, block.timestamp);
+        uint256 amount = SafeMath.mul(uint(ratio), msg.value);
+        balance[msg.sender] = SafeMath.add(balance[msg.sender], amount);
+        blockboosted.transferFrom(address(this), msg.sender, amount);
+        tokenSold = SafeMath.add(tokenSold, amount);
+        emit TokenBought(msg.sender, amount, block.timestamp);
+        if (tokenSold > threshold) {
+            // Create the function to reduce gradually the number of BBST sent against ETH
+            // during ICO. DO NOT FORGET that the ETH price is in wei (10**18)
+            // ratio = 
+        }
         return true;
     }
 }
