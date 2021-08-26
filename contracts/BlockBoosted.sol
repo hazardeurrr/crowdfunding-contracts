@@ -14,7 +14,7 @@ contract BlockBoosted is ERC20 {
      */
     constructor(uint256 totalSupply_) ERC20('BlockBoosted', 'BBST'){
         
-        _mint(address(this), totalSupply_);
+        _mint(address(msg.sender), totalSupply_);
     }
 
 }

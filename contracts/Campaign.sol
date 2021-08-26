@@ -90,6 +90,16 @@ contract Campaign {
         _;
     }
 
+    modifier ETHOnly() {
+        require(token == IERC20(address(0)), "[WARNING] This campaign only receives ETH");
+        _;
+    }
+
+    modifier ERC20Only() {
+        require(token != IERC20(address(0)), "[WARNING] This campaign only receives ERC20");
+        _;
+    }
+
     constructor(
         address payable creator_,
         uint campaign_id_,
@@ -113,18 +123,13 @@ contract Campaign {
             require(nbTiers == tiers_.length, "Not compatible");
             nbTiers = nbTiers_;
             addTiersFromList(tiers_);
-            if (token_ == IERC20(address(0))) {
-                
-            } else {
-                token = token_;    
-                bool tokenApproval = approveCrowdfunding(token);
-                require(tokenApproval, "[WARNING] Approval denied");
-            }
+            token = token_;
             campaign_address = address(this);
             emit CampaignCreated(creator, block.timestamp, goal, token);
     }
     
-    function approveCrowdfunding(IERC20 tokenCrowdfunding) public returns(bool) {
+    function approveCrowdfunding() public returns(bool) {
+        IERC20 tokenCrowdfunding = token;
         uint allowance = tokenCrowdfunding.balanceOf(msg.sender);
         bool success = tokenCrowdfunding.approve(address(msg.sender), allowance);
         return success;
@@ -144,7 +149,7 @@ contract Campaign {
         emit CreatorPaid(msg.sender, totalBalance);
     }
 
-    function participateInETH() payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
+    function participateInETH() payable public ETHOnly() verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
         require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
         require(block.timestamp >= startTimestamp, "The campaign has not started yet");
         require(msg.value > 0, "Amount cannot be less or equal to zero");
@@ -173,7 +178,7 @@ contract Campaign {
     }
 
 
-    function participateInERC20(uint256 amount) payable public verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
+    function participateInERC20(uint256 amount) payable public ERC20Only() verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
             require(token != IERC20(address(0)), "[UNAUTHORIZED] This campaign can only be funded using the correct IERC20");
             require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
             require(block.timestamp >= startTimestamp, "The campaign has not started yet");
