@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^4.0.0",
+    "@truffle/hdwallet-provider": "^1.5.0",
     "eth-gas-reporter": "^0.2.22",
     "solhint": "^3.3.4",
     "solidity-coverage": "^0.7.16"

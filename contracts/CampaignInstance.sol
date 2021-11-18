@@ -95,7 +95,7 @@ contract Campaign is Ownable {
     }
 
 
-    constructor(
+    function initialize(
         address payable creator_,
         uint campaign_id_,
         uint goal_,
@@ -105,14 +105,13 @@ contract Campaign is Ownable {
         IERC20 token_,
         uint nbTiers_,
         uint[] memory tiers_
-        ) {
+        ) public {
             creator = creator_;
             campaign_id = campaign_id_;
             goal = goal_;
             startTimestamp = startTimestamp_;
             endTimestamp = endTimestamp_;
             state = State.Fundraising;
-            owner = creator;
             totalBalance = 0;
             partialGoal = partialGoal_;
             require(nbTiers_ == tiers_.length, "Not compatible");
