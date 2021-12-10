@@ -2,9 +2,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@openzeppelin/contracts/access/Ownable.sol';
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ICampaign.sol";
 
-contract Campaign is Ownable {
+contract Campaign is ICampaign, Ownable {
 
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -16,7 +17,7 @@ contract Campaign is Ownable {
         Refund,
         Canceled
     }
-
+    address factory;
     
 
     // General information about the campaign
@@ -27,8 +28,10 @@ contract Campaign is Ownable {
     State public state;
     address public campaign_address;
     bool public partialGoal;
-    IERC20 private token;
+    address private token;
     uint nbTiers;
+    address owner;
+    
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -48,16 +51,9 @@ contract Campaign is Ownable {
     // **************************** //
     // *         Events           * //
     // **************************** //
-    event CampaignCreated(address creator, uint timestamp, uint goal, IERC20 token);
-
-    // Participation from an address
-    event Participation(address from, uint campaign_id, uint amount, uint totalBalance);
-
-    // Event triggered when the creator has been paid
-    event CreatorPaid(address creator, uint total_amount);
-
-    event Refund(address from, uint refundAmount);
-    
+ 
+    constructor() {
+    }
 
     // **************************** //
     // *         Modifiers        * //
@@ -85,34 +81,33 @@ contract Campaign is Ownable {
     }
 
     modifier ETHOnly() {
-        require(token == IERC20(address(0)), "[WARNING] This campaign only receives ETH");
+        require(token == address(address(0)), "[WARNING] This campaign only receives ETH");
         _;
     }
 
     modifier ERC20Only() {
-        require(token != IERC20(address(0)), "[WARNING] This campaign only receives ERC20");
+        require(token != address(address(0)), "[WARNING] This campaign only receives ERC20");
         _;
     }
 
 
-    constructor(
+    function initialize(
         address payable creator_,
         uint campaign_id_,
         uint goal_,
         uint startTimestamp_,
         uint endTimestamp_,
         bool partialGoal_,
-        IERC20 token_,
+        address token_,
         uint nbTiers_,
         uint[] memory tiers_
-        ) {
+        ) external {
             creator = creator_;
             campaign_id = campaign_id_;
             goal = goal_;
             startTimestamp = startTimestamp_;
             endTimestamp = endTimestamp_;
             state = State.Fundraising;
-            owner = creator;
             totalBalance = 0;
             partialGoal = partialGoal_;
             require(nbTiers_ == tiers_.length, "Not compatible");
@@ -124,19 +119,15 @@ contract Campaign is Ownable {
     }
     
     function approveCrowdfunding() public returns(bool) {
-        IERC20 tokenCrowdfunding = token;
-        uint allowance = tokenCrowdfunding.balanceOf(msg.sender);
-        bool success = tokenCrowdfunding.approve(address(msg.sender), allowance);
+        address tokenCrowdfunding = token;
+        uint allowance = IERC20(tokenCrowdfunding).balanceOf(msg.sender);
+        bool success = IERC20(tokenCrowdfunding).approve(address(msg.sender), allowance);
         return success;
     }
 
 
-    function addTiers(uint index, uint price, uint quantity) public onlyOwner {
-        Tiers memory newTier = Tiers(index, price, quantity);
-        tiersList.push(newTier);
-    }
 
-    function payCreator() public onlyOwner {
+    function payCreator() override external onlyOwner() {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
         require(totalBalance > 0, "totalBalance cannot be empty");
         creator.transfer(totalBalance);
@@ -174,7 +165,7 @@ contract Campaign is Ownable {
 
 
     function participateInERC20(uint256 amount) payable public ERC20Only() verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
-            require(token != IERC20(address(0)), "[UNAUTHORIZED] This campaign can only be funded using the correct IERC20");
+            require(token != address(0), "[UNAUTHORIZED] This campaign can only be funded using the correct IERC20");
             require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
             require(block.timestamp >= startTimestamp, "The campaign has not started yet");
             require(amount > 0, "Amount cannot be less or equal to zero");
@@ -191,8 +182,8 @@ contract Campaign is Ownable {
             }
             //  adding the transaction value to the totalBalance
             // [HLI] J'imagine que vous avez implémenté l'appele de "approve" dans votre UX
-            require(token.balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
-            token.transferFrom(msg.sender, address(this), amount);
+            require(IERC20(token).balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
+            IERC20(token).transferFrom(msg.sender, address(this), amount);
             totalBalance += amount;
             contributions[msg.sender] += amount;
             
@@ -205,7 +196,7 @@ contract Campaign is Ownable {
             return true;
         }
     
-    function refund() public verifyState(State.Refund) {
+    function refund() override public verifyState(State.Refund) returns(bool) {
         require(msg.sender != creator, "No refund for the creator");
         require(contributions[msg.sender] > 0, "You have not participated in the campaign");
         // [HLI] Ici vous avez une vulnérabilité aux reentrancy attacks.
@@ -217,10 +208,11 @@ contract Campaign is Ownable {
         
 
         emit Refund(msg.sender, contributions[msg.sender]);
+        return(true);
     }
 
     // Send ether to the contract
-    receive() external payable {
+    receive() override external payable {
         participateInETH();
     }
 
@@ -249,6 +241,12 @@ contract Campaign is Ownable {
                 addTiers(tempIndex, tempPrice, tempQuantity);
             }
         }
+    }
+
+
+    function addTiers(uint index, uint price, uint quantity) internal onlyOwner {
+        Tiers memory newTier = Tiers(index, price, quantity);
+        tiersList.push(newTier);
     }
     
 
