@@ -2,10 +2,11 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+
 import "./ICampaign.sol";
 
-contract Campaign is ICampaign, Ownable {
+contract Campaign is ICampaign, Context {
 
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -30,6 +31,7 @@ contract Campaign is ICampaign, Ownable {
     bool public partialGoal;
     address private token;
     uint nbTiers;
+
     address owner;
     
 
@@ -43,16 +45,15 @@ contract Campaign is ICampaign, Ownable {
         uint price;
         uint quantity;
     }
+
     Tiers[] public tiersList;
 
     mapping(address => uint) public contributions;
     mapping(address => uint) public contributionsTiers;
 
-    // **************************** //
-    // *         Events           * //
-    // **************************** //
- 
+
     constructor() {
+        owner = msg.sender;
     }
 
     // **************************** //
@@ -90,6 +91,25 @@ contract Campaign is ICampaign, Ownable {
         _;
     }
 
+    modifier onlyOwner() {
+        require(owner == _msgSender(), "You are not the Owner");
+        _;
+    }
+    
+    modifier onlyFactory() {
+        require(factory == _msgSender(), "You are not the Factory");
+        _;
+    }
+    
+    modifier onlyCreator() {
+        require(creator == _msgSender(), "You are not the Creator of the campaign");
+        _;
+    }
+
+
+    // **************************** //
+    // *         Functions        * //
+    // **************************** //
 
     function initialize(
         address payable creator_,
@@ -101,7 +121,7 @@ contract Campaign is ICampaign, Ownable {
         address token_,
         uint nbTiers_,
         uint[] memory tiers_
-        ) external {
+        ) override external {
             creator = creator_;
             campaign_id = campaign_id_;
             goal = goal_;
@@ -115,10 +135,11 @@ contract Campaign is ICampaign, Ownable {
             addTiersFromList(tiers_);
             token = token_;
             campaign_address = address(this);
-            emit CampaignCreated(creator, block.timestamp, goal, token);
+            
+            emit CampaignCreation(address(this), creator, block.timestamp, goal, token);
     }
     
-    function approveCrowdfunding() public returns(bool) {
+    function approveCrowdfunding() external returns(bool) {
         address tokenCrowdfunding = token;
         uint allowance = IERC20(tokenCrowdfunding).balanceOf(msg.sender);
         bool success = IERC20(tokenCrowdfunding).approve(address(msg.sender), allowance);
@@ -141,19 +162,17 @@ contract Campaign is ICampaign, Ownable {
         require(msg.value > 0, "Amount cannot be less or equal to zero");
         if (block.timestamp > endTimestamp && goal < totalBalance) {
             state = State.Successfull;
-            // [HLI] Ici je ne pense pas que ça fonctionne. Revert() va annuler l'ensemble de ce qui s'est passé dans la tx.
-            // L'état du contrat reviendra à son état initial, et 'state' ne sera pas modifié.
             return false;
         }
         if (block.timestamp > endTimestamp && goal > totalBalance) {
                 state = State.Successfull;
-                // [HLI] Même remarque
                 return false;
         }
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
         contributions[msg.sender] += msg.value;
         
+        // Cashback : To Be Implemeted later
         // cbk.contribute(msg.sender, amount, token);
         
         // setting up the tiers for the transaction
@@ -171,13 +190,10 @@ contract Campaign is ICampaign, Ownable {
             require(amount > 0, "Amount cannot be less or equal to zero");
             if (block.timestamp > endTimestamp && goal < totalBalance) {
                 state = State.Refund;
-                // [HLI] Meme remarque que dans participateInETH()
-                // Vous devriez peut être mettre ces fonctions dans une fonction de controle séparée pour ne pas dupliquer la logique
                 return false;
             }
             if (block.timestamp > endTimestamp && goal > totalBalance) {
                 state = State.Successfull;
-                // [HLI] Pareil
                 return false;
             }
             //  adding the transaction value to the totalBalance
@@ -196,7 +212,7 @@ contract Campaign is ICampaign, Ownable {
             return true;
         }
     
-    function refund() override public verifyState(State.Refund) returns(bool) {
+    function refund() override external verifyState(State.Refund) onlyOwner() returns(bool) {
         require(msg.sender != creator, "No refund for the creator");
         require(contributions[msg.sender] > 0, "You have not participated in the campaign");
         // [HLI] Ici vous avez une vulnérabilité aux reentrancy attacks.
@@ -204,8 +220,8 @@ contract Campaign is ICampaign, Ownable {
         
         uint myContribution = contributions[msg.sender];
         contributions[msg.sender] = 0;
-        payable(msg.sender).transfer(myContribution);
         
+        payable(msg.sender).transfer(myContribution);
 
         emit Refund(msg.sender, contributions[msg.sender]);
         return(true);
@@ -217,7 +233,7 @@ contract Campaign is ICampaign, Ownable {
     }
 
     // **************************** //
-    // *   Internal Function      * //
+    // *   Internal Functions     * //
     // **************************** //
 
     function setTiers(address from, uint amount) internal {
@@ -244,7 +260,7 @@ contract Campaign is ICampaign, Ownable {
     }
 
 
-    function addTiers(uint index, uint price, uint quantity) internal onlyOwner {
+    function addTiers(uint index, uint price, uint quantity) internal {
         Tiers memory newTier = Tiers(index, price, quantity);
         tiersList.push(newTier);
     }

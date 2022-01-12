@@ -25,10 +25,6 @@ interface ICampaignFactory {
         uint tokenChoice,
         uint nbTiers_,
         uint[] memory listTiers_
-        ) payable external returns(bool);
-
-    function addToBlacklist(address newAddress) external ;
-    
-    function removeFromBlacklist(address addressToRemove) external;
+        ) payable external returns(bool);    
 
 }

@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 // 4. Set the currencies wanted in the mapping as (index, address)
 
 
-contract CampaignFactory is Ownable, ICampaignFactory {
+contract CampaignFactory {
     using SafeMath for uint;
 
     mapping(address => bool) public blacklist;
@@ -36,6 +36,7 @@ contract CampaignFactory is Ownable, ICampaignFactory {
     
     // TOKEN ADDRESSES
 
+    event CampaignCreated(address campaign, address creator, uint256 campaignId, uint goal);
 
     modifier isWhitelisted() {
         require(blacklist[msg.sender] == false, 'You are not allowed to interract with the contract');
@@ -44,20 +45,24 @@ contract CampaignFactory is Ownable, ICampaignFactory {
 
     constructor(address masterCampaignAddress_) {
         address usdt = address(0xdAC17F958D2ee523a2206206994597C13D831ec7);
-        address bbst = address(0);
+        setCurrencies(0, usdt);
         nbCampaign = 0;
         indexCurrencies = 0;
         masterCampaignAddress = masterCampaignAddress_;
     }
 
-    function setMasterCampaignAddress(address newAddress) public onlyOwner returns(address) {
+    // Setting up the proxy
+    function setMasterCampaignAddress(address newAddress) public returns(address) {
         masterCampaignAddress = newAddress;
         return(masterCampaignAddress);
     }
 
-    function getCurrencies(uint index) public returns(address) {
+    // **************************** //
+    // *       Currencies         * //
+    // **************************** //
+
+    function getCurrencies(uint index) public view returns(address) {
         require(index >= 0, "index must be positive");
-        indexCurrencies += 1;
         return(currencies[index]);
     }
 
@@ -65,6 +70,10 @@ contract CampaignFactory is Ownable, ICampaignFactory {
         currencies[index] = currencyAddress;
         return(true);
     }
+
+    // **************************** //
+    // *      Initialisation      * //
+    // **************************** //
 
     function createCampaign(
         uint goal_, 
@@ -74,23 +83,33 @@ contract CampaignFactory is Ownable, ICampaignFactory {
         uint tokenChoice,
         uint nbTiers_,
         uint[] memory listTiers_
-        ) payable external override isWhitelisted() returns(bool) {
+        ) payable external isWhitelisted() returns(bool) {
             require(msg.sender != address(0), "address not valid");
-            address newCampaign = Clones.clone( masterCampaignAddress);
+            require(tokenChoice >= 0, "cannot be less than 0");
+            // Setting up the proxy
+            address newCampaign = Clones.clone(masterCampaignAddress);
+            
             address payable nA = payable(newCampaign);
-            ICampaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, partialGoal_, token, nbTiers_, listTiers_);
+            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, partialGoal_, currencies[tokenChoice], nbTiers_, listTiers_);
+            
             uint crCampaignNumber = creatorCampaignNumber[msg.sender];
             campaigns[msg.sender] = CampaignSaved(newCampaign, crCampaignNumber);
             nbCampaign += 1;
-            emit CampaignCreated(msg.sender, nbCampaign, goal_);
+            emit CampaignCreated(nA, msg.sender, nbCampaign, goal_);
             return true;
     }
 
-    function addToBlacklist(address newAddress) public override {
+
+    // **************************** //
+    // *         Functions        * //
+    // **************************** //
+
+
+    function addToBlacklist(address newAddress) public {
         blacklist[newAddress] = true;
     }
     
-    function removeFromBlacklist(address addressToRemove)  public override  {
+    function removeFromBlacklist(address addressToRemove)  public {
         blacklist[addressToRemove] = false;
     }
 
