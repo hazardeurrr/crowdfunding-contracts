@@ -67,6 +67,7 @@ contract CampaignFactory {
     }
 
     function setCurrencies(uint index, address currencyAddress) public returns(bool) {
+        require(index >= 0, "index must be positive");
         currencies[index] = currencyAddress;
         return(true);
     }

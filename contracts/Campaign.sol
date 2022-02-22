@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 
 import "./ICampaign.sol";
 
-contract Campaign is ICampaign, Context {
+abstract contract Campaign is ICampaign, Context {
 
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -30,7 +30,6 @@ contract Campaign is ICampaign, Context {
     address public campaign_address;
     bool public partialGoal;
     address private token;
-    uint nbTiers;
 
     address owner;
     
@@ -38,15 +37,6 @@ contract Campaign is ICampaign, Context {
     // Starting and ending date for the campaign
     uint public startTimestamp;
     uint public endTimestamp;
-
-    // Tiers
-    struct Tiers {
-        uint index;
-        uint price;
-        uint quantity;
-    }
-
-    Tiers[] public tiersList;
 
     mapping(address => uint) public contributions;
     mapping(address => uint) public contributionsTiers;
@@ -111,6 +101,8 @@ contract Campaign is ICampaign, Context {
     // *         Functions        * //
     // **************************** //
 
+
+    // to be only executed by the factory, not working yet because of delegateCall to be investigated
     function initialize(
         address payable creator_,
         uint campaign_id_,
@@ -118,10 +110,8 @@ contract Campaign is ICampaign, Context {
         uint startTimestamp_,
         uint endTimestamp_,
         bool partialGoal_,
-        address token_,
-        uint nbTiers_,
-        uint[] memory tiers_
-        ) override external {
+        address token_
+        ) external {
             creator = creator_;
             campaign_id = campaign_id_;
             goal = goal_;
@@ -130,15 +120,14 @@ contract Campaign is ICampaign, Context {
             state = State.Fundraising;
             totalBalance = 0;
             partialGoal = partialGoal_;
-            require(nbTiers_ == tiers_.length, "Not compatible");
-            nbTiers = nbTiers_;
-            addTiersFromList(tiers_);
+            
             token = token_;
             campaign_address = address(this);
             
             emit CampaignCreation(address(this), creator, block.timestamp, goal, token);
     }
     
+    // check if possible
     function approveCrowdfunding() external returns(bool) {
         address tokenCrowdfunding = token;
         uint allowance = IERC20(tokenCrowdfunding).balanceOf(msg.sender);
@@ -148,7 +137,7 @@ contract Campaign is ICampaign, Context {
 
 
 
-    function payCreator() override external onlyOwner() {
+    function payCreator() override external onlyCreator() verifyState(State.Successfull) {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
         require(totalBalance > 0, "totalBalance cannot be empty");
         creator.transfer(totalBalance);
@@ -164,19 +153,22 @@ contract Campaign is ICampaign, Context {
             state = State.Successfull;
             return false;
         }
+        if (block.timestamp > endTimestamp && goal < totalBalance && !partialGoal) {
+                state = State.Refund;
+                return false;
+        }
         if (block.timestamp > endTimestamp && goal > totalBalance) {
                 state = State.Successfull;
                 return false;
         }
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
-        contributions[msg.sender] += msg.value;
-        
+        uint256 amount = msg.value;
+        contributions[msg.sender] += amount;
+        amount = 0;
         // Cashback : To Be Implemeted later
         // cbk.contribute(msg.sender, amount, token);
         
-        // setting up the tiers for the transaction
-        setTiers(msg.sender, msg.value);
         
         emit Participation(msg.sender, campaign_id, msg.value, totalBalance);
         return true;
@@ -188,8 +180,12 @@ contract Campaign is ICampaign, Context {
             require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
             require(block.timestamp >= startTimestamp, "The campaign has not started yet");
             require(amount > 0, "Amount cannot be less or equal to zero");
-            if (block.timestamp > endTimestamp && goal < totalBalance) {
+            if (block.timestamp > endTimestamp && goal < totalBalance && !partialGoal) {
                 state = State.Refund;
+                return false;
+            }
+            if (block.timestamp > endTimestamp && goal < totalBalance && partialGoal) {
+                state = State.Successfull;
                 return false;
             }
             if (block.timestamp > endTimestamp && goal > totalBalance) {
@@ -201,18 +197,18 @@ contract Campaign is ICampaign, Context {
             require(IERC20(token).balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
             IERC20(token).transferFrom(msg.sender, address(this), amount);
             totalBalance += amount;
-            contributions[msg.sender] += amount;
-            
+            uint256 _amount = amount;
+            contributions[msg.sender] += _amount;
+            _amount = 0;
+            // to be coded 
             // cbk.contribute(msg.sender, amount, token);
             
-            // setting up the tiers for the transaction
-            setTiers(msg.sender, amount);
             
             emit Participation(msg.sender, campaign_id, amount, totalBalance);
             return true;
         }
-    
-    function refund() override external verifyState(State.Refund) onlyOwner() returns(bool) {
+        
+    function refund() public verifyState(State.Refund) returns(bool) {
         require(msg.sender != creator, "No refund for the creator");
         require(contributions[msg.sender] > 0, "You have not participated in the campaign");
         // [HLI] Ici vous avez une vulnérabilité aux reentrancy attacks.
@@ -232,38 +228,18 @@ contract Campaign is ICampaign, Context {
         participateInETH();
     }
 
+
+
+    function isCreator() public view returns(bool) {
+        require(msg.sender == creator, "You are not the creator of this campaign");
+        return true;
+    }
+
+
     // **************************** //
     // *   Internal Functions     * //
     // **************************** //
 
-    function setTiers(address from, uint amount) internal {
-        for (uint i = 0; i < nbTiers; i++) {
-            if (amount == tiersList[i].price) {
-                contributionsTiers[from] = i;
-                SafeMath.sub(tiersList[i].quantity, 1);
-            }
-        }
-    }
-
-    function addTiersFromList(uint[] memory tList) internal {
-        uint tempIndex;
-        uint tempPrice;
-        uint tempQuantity;
-        for (uint j = 0; j < nbTiers; j++) {
-            if (j % 3 == 0) { tempIndex = tList[j]; }
-            if (j % 3 == 1) { tempPrice = tList[j]; }
-            if (j % 3 == 2) { 
-                tempQuantity = tList[j];
-                addTiers(tempIndex, tempPrice, tempQuantity);
-            }
-        }
-    }
-
-
-    function addTiers(uint index, uint price, uint quantity) internal {
-        Tiers memory newTier = Tiers(index, price, quantity);
-        tiersList.push(newTier);
-    }
     
 
 }

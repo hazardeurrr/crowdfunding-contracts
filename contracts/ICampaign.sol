@@ -18,6 +18,5 @@ interface ICampaign {
         uint nbTiers_,
         uint[] memory tiers_) external;
     function payCreator() external;
-    function refund() external returns(bool);
     receive() external payable;
 }
