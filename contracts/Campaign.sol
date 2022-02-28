@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 
 import "./ICampaign.sol";
 
-abstract contract Campaign is ICampaign, Context {
+contract Campaign is ICampaign, Context {
 
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -26,6 +26,7 @@ abstract contract Campaign is ICampaign, Context {
     address payable public creator;
     uint public goal;
     uint256 public totalBalance;
+    uint256 public raised;
     State public state;
     address public campaign_address;
     bool public partialGoal;
@@ -39,12 +40,21 @@ abstract contract Campaign is ICampaign, Context {
     uint public endTimestamp;
 
     mapping(address => uint) public contributions;
-    mapping(address => uint) public contributionsTiers;
+
+    struct Subscriber {
+        address addr;
+        uint tier;
+    }
+
+    uint256[] public amounts;
+    uint256[] public stock;
 
 
     constructor() {
         owner = msg.sender;
     }
+
+    Subscriber[] public subscribers;
 
     // **************************** //
     // *         Modifiers        * //
@@ -110,8 +120,10 @@ abstract contract Campaign is ICampaign, Context {
         uint startTimestamp_,
         uint endTimestamp_,
         bool partialGoal_,
-        address token_
-        ) external {
+        address token_,
+        uint256[] amounts_,
+        int256[] stock_
+        ) override external {
             creator = creator_;
             campaign_id = campaign_id_;
             goal = goal_;
@@ -120,7 +132,9 @@ abstract contract Campaign is ICampaign, Context {
             state = State.Fundraising;
             totalBalance = 0;
             partialGoal = partialGoal_;
-            
+            raised = totalBalance;
+            amounts = amounts_;
+            stock = stock_;
             token = token_;
             campaign_address = address(this);
             
@@ -136,36 +150,40 @@ abstract contract Campaign is ICampaign, Context {
     }
 
 
-
-    function payCreator() override external onlyCreator() verifyState(State.Successfull) {
+    function payCreator() override external onlyCreator() {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
         require(totalBalance > 0, "totalBalance cannot be empty");
+        require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
         creator.transfer(totalBalance);
         totalBalance = 0;
         emit CreatorPaid(msg.sender, totalBalance);
     }
 
-    function participateInETH() payable public ETHOnly() verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
+
+    function participateInETH(uint indexTier) payable public ETHOnly() validAddress(msg.sender) returns(bool success) {
         require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
         require(block.timestamp >= startTimestamp, "The campaign has not started yet");
-        require(msg.value > 0, "Amount cannot be less or equal to zero");
-        if (block.timestamp > endTimestamp && goal < totalBalance) {
-            state = State.Successfull;
-            return false;
+        require(block.timestamp < endTimestamp, "The campaign is finished");
+        require(msg.value > 0 && msg.value >= amounts[indexTier], "Amount is not correct");
+        require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
+        
+        if(stock[indexTier] != -1){
+            stock[indexTier] = stock[indexTier] - 1;
         }
-        if (block.timestamp > endTimestamp && goal < totalBalance && !partialGoal) {
-                state = State.Refund;
-                return false;
-        }
-        if (block.timestamp > endTimestamp && goal > totalBalance) {
-                state = State.Successfull;
-                return false;
-        }
+        
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
+        raised = totalBalance;
         uint256 amount = msg.value;
         contributions[msg.sender] += amount;
         amount = 0;
+
+        Subscriber memory sub;
+
+        sub.addr = msg.sender;
+        sub.tier = indexTier;
+
+        subscribers.push(sub);
         // Cashback : To Be Implemeted later
         // cbk.contribute(msg.sender, amount, token);
         
@@ -197,6 +215,7 @@ abstract contract Campaign is ICampaign, Context {
             require(IERC20(token).balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
             IERC20(token).transferFrom(msg.sender, address(this), amount);
             totalBalance += amount;
+            raised = totalBalance;
             uint256 _amount = amount;
             contributions[msg.sender] += _amount;
             _amount = 0;
@@ -208,8 +227,9 @@ abstract contract Campaign is ICampaign, Context {
             return true;
         }
         
-    function refund() public verifyState(State.Refund) returns(bool) {
+    function refund() public returns(bool) {
         require(msg.sender != creator, "No refund for the creator");
+        require(!partialGoal && block.timestamp > endTimestamp, "Can't refund this type of campaign");
         require(contributions[msg.sender] > 0, "You have not participated in the campaign");
         // [HLI] Ici vous avez une vulnérabilité aux reentrancy attacks.
         // https://quantstamp.com/blog/what-is-a-re-entrancy-attack
@@ -222,6 +242,7 @@ abstract contract Campaign is ICampaign, Context {
         emit Refund(msg.sender, contributions[msg.sender]);
         return(true);
     }
+
 
     // Send ether to the contract
     receive() override external payable {
@@ -240,6 +261,12 @@ abstract contract Campaign is ICampaign, Context {
     // *   Internal Functions     * //
     // **************************** //
 
-    
+    function getStock() public view returns (int256[] memory) {
+        return stock;
+    }
+
+    function getSubs() public view returns (int256[] memory) {
+        return subscribers;
+    }
 
 }

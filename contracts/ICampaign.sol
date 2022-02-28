@@ -15,8 +15,9 @@ interface ICampaign {
         uint endTimestamp_,
         bool partialGoal_,
         address token_,
-        uint nbTiers_,
-        uint[] memory tiers_) external;
+        uint256[] memory amounts_,
+        int256[] memory stock_
+        ) external;
     function payCreator() external;
     receive() external payable;
 }

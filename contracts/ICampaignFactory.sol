@@ -23,8 +23,8 @@ interface ICampaignFactory {
         uint endTimestamp_, 
         bool partialGoal_,
         uint tokenChoice,
-        uint nbTiers_,
-        uint[] memory listTiers_
+        uint256[] amounts_,
+        int256[] stock_
         ) payable external returns(bool);    
 
 }

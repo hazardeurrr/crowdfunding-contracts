@@ -82,8 +82,8 @@ contract CampaignFactory {
         uint endTimestamp_, 
         bool partialGoal_,
         uint tokenChoice,
-        uint nbTiers_,
-        uint[] memory listTiers_
+        uint256[] amounts_,
+        int256[] stock_
         ) payable external isWhitelisted() returns(bool) {
             require(msg.sender != address(0), "address not valid");
             require(tokenChoice >= 0, "cannot be less than 0");
@@ -91,7 +91,7 @@ contract CampaignFactory {
             address newCampaign = Clones.clone(masterCampaignAddress);
             
             address payable nA = payable(newCampaign);
-            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, partialGoal_, currencies[tokenChoice], nbTiers_, listTiers_);
+            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, partialGoal_, currencies[tokenChoice], amounts_, stock_);
             
             uint crCampaignNumber = creatorCampaignNumber[msg.sender];
             campaigns[msg.sender] = CampaignSaved(newCampaign, crCampaignNumber);
