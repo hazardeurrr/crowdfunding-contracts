@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 
 import "./ICampaign.sol";
+import "./ERC20Payment.sol";
 
 contract Campaign is ICampaign, Context {
 
@@ -121,8 +122,8 @@ contract Campaign is ICampaign, Context {
         uint endTimestamp_,
         bool partialGoal_,
         address token_,
-        uint256[] amounts_,
-        int256[] stock_
+        uint256[] memory amounts_,
+        int256[] memory stock_
         ) override external {
             creator = creator_;
             campaign_id = campaign_id_;
@@ -193,32 +194,31 @@ contract Campaign is ICampaign, Context {
     }
 
 
-    function participateInERC20(uint256 amount) payable public ERC20Only() verifyState(State.Fundraising) validAddress(msg.sender) returns(bool success) {
+    function participateInERC20(uint indexTier, uint256 amount) payable public ERC20Only() validAddress(msg.sender) returns(bool success) {
             require(token != address(0), "[UNAUTHORIZED] This campaign can only be funded using the correct IERC20");
             require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
             require(block.timestamp >= startTimestamp, "The campaign has not started yet");
-            require(amount > 0, "Amount cannot be less or equal to zero");
-            if (block.timestamp > endTimestamp && goal < totalBalance && !partialGoal) {
-                state = State.Refund;
-                return false;
+            require(msg.value > 0 && msg.value >= amounts[indexTier], "Amount is not correct");
+            require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
+            
+            if(stock[indexTier] != -1){
+                stock[indexTier] = stock[indexTier] - 1;
             }
-            if (block.timestamp > endTimestamp && goal < totalBalance && partialGoal) {
-                state = State.Successfull;
-                return false;
-            }
-            if (block.timestamp > endTimestamp && goal > totalBalance) {
-                state = State.Successfull;
-                return false;
-            }
-            //  adding the transaction value to the totalBalance
-            // [HLI] J'imagine que vous avez implémenté l'appele de "approve" dans votre UX
-            require(IERC20(token).balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
-            IERC20(token).transferFrom(msg.sender, address(this), amount);
+            // appeler ERC20 PAYMENT
+            ERC20Payment(0x0000000000).payInERC20Bis(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+
             totalBalance += amount;
             raised = totalBalance;
             uint256 _amount = amount;
             contributions[msg.sender] += _amount;
             _amount = 0;
+
+            Subscriber memory sub;
+
+            sub.addr = msg.sender;
+            sub.tier = indexTier;
+
+            subscribers.push(sub);
             // to be coded 
             // cbk.contribute(msg.sender, amount, token);
             
@@ -246,7 +246,7 @@ contract Campaign is ICampaign, Context {
 
     // Send ether to the contract
     receive() override external payable {
-        participateInETH();
+        // participateInETH();
     }
 
 
@@ -265,7 +265,7 @@ contract Campaign is ICampaign, Context {
         return stock;
     }
 
-    function getSubs() public view returns (int256[] memory) {
+    function getSubs() public view returns (Subscriber[] memory) {
         return subscribers;
     }
 
