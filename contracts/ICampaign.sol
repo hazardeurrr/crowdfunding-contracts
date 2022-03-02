@@ -19,5 +19,6 @@ interface ICampaign {
         int256[] memory stock_
         ) external;
     function payCreator() external;
+    function payCreatorERC20() external;
     receive() external payable;
 }

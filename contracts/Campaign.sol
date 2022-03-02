@@ -48,7 +48,7 @@ contract Campaign is ICampaign, Context {
     }
 
     uint256[] public amounts;
-    uint256[] public stock;
+    int256[] public stock;
 
 
     constructor() {
@@ -143,19 +143,30 @@ contract Campaign is ICampaign, Context {
     }
     
     // check if possible
-    function approveCrowdfunding() external returns(bool) {
-        address tokenCrowdfunding = token;
-        uint allowance = IERC20(tokenCrowdfunding).balanceOf(msg.sender);
-        bool success = IERC20(tokenCrowdfunding).approve(address(msg.sender), allowance);
-        return success;
-    }
+    //function approveCrowdfunding(address userAddr) external returns(bool) {
+        // address tokenCrowdfunding = token;
+        // uint256 INFINITE = 2**256 - 1;
+        // bool success = IERC20(tokenCrowdfunding).approve(address(userAddr), INFINITE);
+        // return success;
+    //}
 
 
     function payCreator() override external onlyCreator() {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
         require(totalBalance > 0, "totalBalance cannot be empty");
         require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
+
         creator.transfer(totalBalance);
+        totalBalance = 0;
+        emit CreatorPaid(msg.sender, totalBalance);
+    }
+
+    function payCreatorERC20() override external onlyCreator() {
+        require(block.timestamp > endTimestamp, "The campaign has not ended yet");
+        require(totalBalance > 0, "totalBalance cannot be empty");
+        require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
+
+        IERC20(token).transfer(creator, totalBalance);
         totalBalance = 0;
         emit CreatorPaid(msg.sender, totalBalance);
     }
@@ -198,14 +209,17 @@ contract Campaign is ICampaign, Context {
             require(token != address(0), "[UNAUTHORIZED] This campaign can only be funded using the correct IERC20");
             require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
             require(block.timestamp >= startTimestamp, "The campaign has not started yet");
-            require(msg.value > 0 && msg.value >= amounts[indexTier], "Amount is not correct");
+            require(amount > 0 && amount >= amounts[indexTier], "Amount is not correct");
             require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
+            require(IERC20(token).balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
             
+
+            // appeler ERC20 PAYMENT
+            ERC20Payment(0x5D86406d77BA1b85184ECbA07cf5A5785702229D).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+
             if(stock[indexTier] != -1){
                 stock[indexTier] = stock[indexTier] - 1;
             }
-            // appeler ERC20 PAYMENT
-            ERC20Payment(0x0000000000).payInERC20Bis(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
 
             totalBalance += amount;
             raised = totalBalance;
@@ -225,6 +239,8 @@ contract Campaign is ICampaign, Context {
             
             emit Participation(msg.sender, campaign_id, amount, totalBalance);
             return true;
+
+
         }
         
     function refund() public returns(bool) {
@@ -238,6 +254,20 @@ contract Campaign is ICampaign, Context {
         contributions[msg.sender] = 0;
         
         payable(msg.sender).transfer(myContribution);
+
+        emit Refund(msg.sender, contributions[msg.sender]);
+        return(true);
+    }
+
+    function refundERC20() public returns(bool) {
+        require(msg.sender != creator, "No refund for the creator");
+        require(!partialGoal && block.timestamp > endTimestamp, "Can't refund this type of campaign");
+        require(contributions[msg.sender] > 0, "You have not participated in the campaign");
+
+        uint myContribution = contributions[msg.sender];
+        contributions[msg.sender] = 0;
+        
+        IERC20(token).transfer(payable(msg.sender), myContribution);
 
         emit Refund(msg.sender, contributions[msg.sender]);
         return(true);

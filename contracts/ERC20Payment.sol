@@ -43,53 +43,14 @@ contract ERC20Payment is Context {
     //     approveCrowdfunding(userAddr);
     // }
 
-    function payInERC20(uint256 amount, address userAddr, address token) payable public returns(bool success) {
-        
-        //  adding the transaction value to the totalBalance
-        // [HLI] J'imagine que vous avez implémenté l'appele de "approve" dans votre UX
-        // if(IERC20(token).allowance(userAddr, address(this)) < amount){
-        //   approveCrowdfunding(userAddr, token);
-        // }
-        IERC20(token).transferFrom(userAddr, msg.sender, amount);
-        // IERC20(token).transfer(, amount);
-        
-            
-        return true;
-    }
-
-        function payInERC20Bis(uint256 amount, address userAddr, address campaign, address token) payable public returns(bool success) {
+    function payInERC20(uint256 amount, address userAddr, address campaign, address token) payable public {
         
         //  adding the transaction value to the totalBalance
         IERC20(token).transferFrom(userAddr, campaign, amount);
         // IERC20(token).transfer(, amount);
         
-            
-        return true;
+
     }
-
-    function payInERC20Ter(uint256 amount, address userAddr, address token) payable public returns(bool success) {
-        
-        //  adding the transaction value to the totalBalance
-        IERC20(token).transferFrom(userAddr, address(this), amount);
-        // IERC20(token).transfer(, amount);
-        
-            
-        return true;
-    }
-
-    function payInERC20Qat(uint256 amount, address userAddr, address campaign, address token) payable public returns(bool success) {
-        
-        //  adding the transaction value to the totalBalance
-        IERC20(token).transferFrom(userAddr, address(this), amount);
-        IERC20(token).transfer(campaign, amount);
-        
-            
-        return true;
-    }
-
-
-
-
 
     // **************************** //
     // *   Internal Functions     * //
