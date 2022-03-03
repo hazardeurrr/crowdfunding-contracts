@@ -46,6 +46,7 @@ contract CampaignFactory {
     constructor(address masterCampaignAddress_) {
         address usdc = address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b);
         setCurrencies(0, usdc);
+        setCurrencies(1, 0x0000000000000000000000000000000000000000);
         nbCampaign = 0;
         indexCurrencies = 0;
         masterCampaignAddress = masterCampaignAddress_;

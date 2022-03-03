@@ -35,7 +35,7 @@ contract Campaign is ICampaign, Context {
 
     address owner;
 
-    address payable feesReceiver = payable(address(0x4f4A40B732A8D6e87CbC720142ad63Dc9D828139));
+    address payable feesReceiver = payable(0x4f4A40B732A8D6e87CbC720142ad63Dc9D828139);
     address bbstAddress = 0x3B00Ef435fA4FcFF5C209a37d1f3dcff37c705aD;
 
     // Starting and ending date for the campaign
@@ -184,7 +184,7 @@ contract Campaign is ICampaign, Context {
           IERC20(token).transfer(creator, totalBalance);
         }
         
-        //totalBalance = 0;
+        totalBalance = 0;
         emit CreatorPaid(msg.sender, totalBalance);
     }
 
