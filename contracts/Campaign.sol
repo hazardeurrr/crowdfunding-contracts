@@ -34,7 +34,9 @@ contract Campaign is ICampaign, Context {
     address private token;
 
     address owner;
-    
+
+    address payable feesReceiver = payable(address(0x4f4A40B732A8D6e87CbC720142ad63Dc9D828139));
+    address bbstAddress = 0x3B00Ef435fA4FcFF5C209a37d1f3dcff37c705aD;
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -156,7 +158,12 @@ contract Campaign is ICampaign, Context {
         require(totalBalance > 0, "totalBalance cannot be empty");
         require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
 
-        creator.transfer(totalBalance);
+        //fees
+        uint256 feeAmt = totalBalance.mul(25).div(1000);
+        uint256 totalForCreator = totalBalance.sub(feeAmt);
+        feesReceiver.transfer(feeAmt);
+        creator.transfer(totalForCreator);
+
         totalBalance = 0;
         emit CreatorPaid(msg.sender, totalBalance);
     }
@@ -166,8 +173,18 @@ contract Campaign is ICampaign, Context {
         require(totalBalance > 0, "totalBalance cannot be empty");
         require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
 
-        IERC20(token).transfer(creator, totalBalance);
-        totalBalance = 0;
+
+        if(token != bbstAddress){
+            //fees
+            uint256 feeAmt = totalBalance.mul(25).div(1000);
+            uint256 totalForCreator = totalBalance.sub(feeAmt);
+            IERC20(token).transfer(feesReceiver, feeAmt);
+            IERC20(token).transfer(creator, totalForCreator);
+        } else {
+          IERC20(token).transfer(creator, totalBalance);
+        }
+        
+        //totalBalance = 0;
         emit CreatorPaid(msg.sender, totalBalance);
     }
 
@@ -215,7 +232,7 @@ contract Campaign is ICampaign, Context {
             
 
             // appeler ERC20 PAYMENT
-            ERC20Payment(0x5D86406d77BA1b85184ECbA07cf5A5785702229D).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+            ERC20Payment(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
 
             if(stock[indexTier] != -1){
                 stock[indexTier] = stock[indexTier] - 1;

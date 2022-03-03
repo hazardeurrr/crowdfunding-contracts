@@ -39,13 +39,13 @@ contract CampaignFactory {
     event CampaignCreated(address campaign, address creator, uint256 campaignId, uint goal);
 
     modifier isWhitelisted() {
-        require(blacklist[msg.sender] == false, 'You are not allowed to interract with the contract');
+        require(blacklist[msg.sender] == false, "You are not allowed to interract with the contract");
         _;
     }
 
     constructor(address masterCampaignAddress_) {
-        address usdt = address(0xdAC17F958D2ee523a2206206994597C13D831ec7);
-        setCurrencies(0, usdt);
+        address usdc = address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b);
+        setCurrencies(0, usdc);
         nbCampaign = 0;
         indexCurrencies = 0;
         masterCampaignAddress = masterCampaignAddress_;
@@ -82,8 +82,8 @@ contract CampaignFactory {
         uint endTimestamp_, 
         bool partialGoal_,
         uint tokenChoice,
-        uint256[] amounts_,
-        int256[] stock_
+        uint256[] memory amounts_,
+        int256[] memory stock_
         ) payable external isWhitelisted() returns(bool) {
             require(msg.sender != address(0), "address not valid");
             require(tokenChoice >= 0, "cannot be less than 0");
