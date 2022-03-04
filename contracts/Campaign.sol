@@ -36,7 +36,7 @@ contract Campaign is ICampaign, Context {
     address owner;
 
     address payable feesReceiver = payable(0x4f4A40B732A8D6e87CbC720142ad63Dc9D828139);
-    address bbstAddress = 0x3B00Ef435fA4FcFF5C209a37d1f3dcff37c705aD;
+    address bbstAddress = address(0x3B00Ef435fA4FcFF5C209a37d1f3dcff37c705aD);
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -168,6 +168,21 @@ contract Campaign is ICampaign, Context {
         emit CreatorPaid(msg.sender, totalBalance);
     }
 
+    function payCreatorBis() external onlyCreator() {
+        require(block.timestamp > endTimestamp, "The campaign has not ended yet");
+        require(totalBalance > 0, "totalBalance cannot be empty");
+        require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
+
+        //fees
+        uint256 feeAmt = totalBalance.mul(25).div(1000);
+        uint256 totalForCreator = totalBalance.sub(feeAmt);
+        payable(0xdf823e818D0b16e643A5E182034a24905d38491f).transfer(feeAmt);
+        creator.transfer(totalForCreator);
+
+        totalBalance = 0;
+        emit CreatorPaid(msg.sender, totalBalance);
+    }
+
     function payCreatorERC20() override external onlyCreator() {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
         require(totalBalance > 0, "totalBalance cannot be empty");
@@ -178,8 +193,28 @@ contract Campaign is ICampaign, Context {
             //fees
             uint256 feeAmt = totalBalance.mul(25).div(1000);
             uint256 totalForCreator = totalBalance.sub(feeAmt);
-            IERC20(token).transfer(feesReceiver, feeAmt);
+            IERC20(token).transfer(payable(0xdf823e818D0b16e643A5E182034a24905d38491f), feeAmt);
             IERC20(token).transfer(creator, totalForCreator);
+        } else {
+          IERC20(token).transfer(creator, totalBalance);
+        }
+        
+        totalBalance = 0;
+        emit CreatorPaid(msg.sender, totalBalance);
+    }
+
+    function payCreatorERC20Bis() external onlyCreator() {
+        require(block.timestamp > endTimestamp, "The campaign has not ended yet");
+        require(totalBalance > 0, "totalBalance cannot be empty");
+        require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
+
+
+        if(token != bbstAddress){
+            //fees
+            uint256 feeAmt = totalBalance.mul(25).div(1000);
+            uint256 totalForCreator = totalBalance.sub(feeAmt);
+            IERC20(token).transfer(payable(0xdf823e818D0b16e643A5E182034a24905d38491f), feeAmt);
+            // IERC20(token).transfer(creator, totalForCreator);
         } else {
           IERC20(token).transfer(creator, totalBalance);
         }

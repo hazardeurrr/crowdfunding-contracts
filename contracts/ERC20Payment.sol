@@ -41,16 +41,18 @@ contract ERC20Payment is Context {
     //   }
     //   else
     //     approveCrowdfunding(userAddr);
-    // }
+    // ]
+    
 
     function payInERC20(uint256 amount, address userAddr, address campaign, address token) payable public {
         
         //  adding the transaction value to the totalBalance
         IERC20(token).transferFrom(userAddr, campaign, amount);
         // IERC20(token).transfer(, amount);
-        
+
 
     }
+
 
     // **************************** //
     // *   Internal Functions     * //
