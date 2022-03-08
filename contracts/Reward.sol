@@ -1,10 +1,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-// import "./BlockBoosted.sol";
+import "./BlockBoosted.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract Cashback is Context {
+contract Reward is Context {
 
     using SafeMath for uint;
 
@@ -55,9 +55,7 @@ contract Cashback is Context {
     }
 
 
-    function participate(uint256 amount, address token) public returns(bool) {
-
-        require(amount > 0, "The amount must be positive!");
+    function participate(address sender, uint256 amount, address token) public returns(bool) {
 
         uint256 amount_ = amount;
         uint week = (block.timestamp - rewardStartTimestamp) / 604800;
@@ -72,20 +70,20 @@ contract Cashback is Context {
             revert("Wrong token address provided.");
         }
         
-        participations[msg.sender][week] += amount_;
+        participations[sender][week] += amount_;
         totalParticipations[week] += amount_;
-        keys[msg.sender].push(week);
+        keys[sender].push(week);
         amount_ = 0;
 
         return true;
     }
 
 
-    function getClaim(address claimer) public view returns(uint256) {
+    function getClaim() public view returns(uint256) {
         uint256 toClaim = 0;
 
-        for (uint i = 0; i < keys[claimer].length; i++) {
-            uint week = keys[claimer][i];
+        for (uint i = 0; i < keys[msg.sender].length; i++) {
+            uint week = keys[msg.sender][i];
             toClaim += (participations[msg.sender][week] / totalWeek[week]) * totalParticipations[week];
         }
 
@@ -93,16 +91,33 @@ contract Cashback is Context {
     }
 
 
-    function claimTokens(address payable claimer) payable public returns(bool) {
+    function claimTokens() payable public returns(bool) {
         uint256 toClaim = 0;
         address bbst = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
 
-        for (uint i = 0; i < keys[claimer].length; i++) {
-            uint week = keys[claimer][i];
+        uint currentWeek = (block.timestamp - rewardStartTimestamp) / 604800;
+        uint elemCurrentWeek;
+
+        for (uint i = 0; i < keys[msg.sender].length; i++) {
+            if (keys[msg.sender][i] == currentWeek && currentWeek > 0) {
+                elemCurrentWeek = keys[msg.sender][i];
+                break;
+            }
+
+            uint week = keys[msg.sender][i];
             toClaim += (participations[msg.sender][week] / totalWeek[week]) * totalParticipations[week];
         }
 
-        IERC20(bbst).transfer(claimer, toClaim);
+        IERC20(bbst).transfer(msg.sender, toClaim);
+
+        if (currentWeek > 0) {
+            keys[msg.sender] = new uint[](0);
+        } else {
+            uint[] memory newKeys;
+            newKeys[0] = currentWeek;
+            keys[msg.sender] = newKeys;
+        }
+
         return true;
     }
 
