@@ -92,6 +92,8 @@ contract Reward is Context {
 
 
     function claimTokens() payable public returns(bool) {
+        require(((block.timestamp - rewardStartTimestamp) / 604800) > 0, "You cannot retrieve your tokens yet!");
+
         uint256 toClaim = 0;
         address bbst = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
 
@@ -99,22 +101,21 @@ contract Reward is Context {
         uint elemCurrentWeek;
 
         for (uint i = 0; i < keys[msg.sender].length; i++) {
-            if (keys[msg.sender][i] == currentWeek && currentWeek > 0) {
+            if (keys[msg.sender][i] == currentWeek) {
                 elemCurrentWeek = keys[msg.sender][i];
-                break;
+            } else {
+                uint week = keys[msg.sender][i];
+                toClaim += (participations[msg.sender][week] / totalWeek[week]) * totalParticipations[week];
             }
-
-            uint week = keys[msg.sender][i];
-            toClaim += (participations[msg.sender][week] / totalWeek[week]) * totalParticipations[week];
         }
 
         IERC20(bbst).transfer(msg.sender, toClaim);
 
-        if (currentWeek > 0) {
+        if (elemCurrentWeek > 0) {
             keys[msg.sender] = new uint[](0);
         } else {
             uint[] memory newKeys;
-            newKeys[0] = currentWeek;
+            newKeys[0] = elemCurrentWeek;
             keys[msg.sender] = newKeys;
         }
 
