@@ -18,7 +18,7 @@ contract Cashback {
     uint public priceUSDT;
     uint public poidsBBST = 1.5;
     uint public poidsETH = 1;
-    uint public poidsUSDT = 1;
+    uint public poidsUSDC = 1;
 
     // Une fois par semaine appel de l'oracle
     // set des prices
@@ -45,7 +45,7 @@ contract Cashback {
           // USDT contract 0xdac17f958d2ee523a2206206994597c13d831ec7
         }
         else {
-          updateCashbackByAddress(contributor, amount * poidsUSDT);
+          updateCashbackByAddress(contributor, amount * poidsUSDC);
         }
 
       /*

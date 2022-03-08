@@ -36,7 +36,6 @@ contract Campaign is ICampaign, Context {
     address owner;
 
     address payable feesReceiver = payable(0x4f4A40B732A8D6e87CbC720142ad63Dc9D828139);
-    address bbstAddress = address(0x3B00Ef435fA4FcFF5C209a37d1f3dcff37c705aD);
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -188,15 +187,17 @@ contract Campaign is ICampaign, Context {
         require(totalBalance > 0, "totalBalance cannot be empty");
         require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
 
+        address bbstAddress = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
 
-        if(token != bbstAddress){
+
+        if(token == bbstAddress){
             //fees
-            uint256 feeAmt = totalBalance.mul(25).div(1000);
+            IERC20(token).transfer(creator, totalBalance);
+        } else {
+          uint256 feeAmt = totalBalance.mul(25).div(1000);
             uint256 totalForCreator = totalBalance.sub(feeAmt);
             IERC20(token).transfer(payable(0xdf823e818D0b16e643A5E182034a24905d38491f), feeAmt);
             IERC20(token).transfer(creator, totalForCreator);
-        } else {
-          IERC20(token).transfer(creator, totalBalance);
         }
         
         totalBalance = 0;
@@ -208,6 +209,8 @@ contract Campaign is ICampaign, Context {
         require(totalBalance > 0, "totalBalance cannot be empty");
         require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
 
+
+        address bbstAddress = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
 
         if(token != bbstAddress){
             //fees

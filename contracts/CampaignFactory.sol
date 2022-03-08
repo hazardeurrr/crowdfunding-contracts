@@ -47,6 +47,8 @@ contract CampaignFactory {
         address usdc = address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b);
         setCurrencies(0, usdc);
         setCurrencies(1, 0x0000000000000000000000000000000000000000);
+        address bbst = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
+        setCurrencies(2, bbst);
         nbCampaign = 0;
         indexCurrencies = 0;
         masterCampaignAddress = masterCampaignAddress_;
