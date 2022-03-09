@@ -8,22 +8,24 @@ contract Reward is Context {
 
     using SafeMath for uint;
 
-    mapping(address => mapping(uint => uint256)) public participations;
-    mapping(uint => uint256) public totalWeek;
-    mapping(uint => uint256) public totalParticipations;
+    mapping(address => mapping(uint => uint256)) participations;
+    mapping(uint => uint256) totalWeek;
+    mapping(uint => uint256) totalParticipations;
 
-    mapping(address => uint[]) public keys;
+    mapping(address => uint[]) keys;
 
     uint tauxBBST = 1;
     uint tauxETH = 1;
     uint tauxUSDC = 1;
+
+    // uint currWeek = 1;
 
     uint256 rewardStartTimestamp;
 
     address owner;
 
     constructor () {
-        totalWeek[0] = 30000;
+        totalWeek[1] = 30000;
         owner = msg.sender;
         totalParticipations[0] = 0;
         rewardStartTimestamp = block.timestamp;
@@ -58,7 +60,7 @@ contract Reward is Context {
     function participate(address sender, uint256 amount, address token) public returns(bool) {
 
         uint256 amount_ = amount;
-        uint week = (block.timestamp - rewardStartTimestamp) / 604800;
+        uint week = ((block.timestamp - rewardStartTimestamp) / 604800) + 1;
 
         if (token == address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b)) {
             amount_ = amount_ * tauxUSDC;
@@ -70,12 +72,24 @@ contract Reward is Context {
             revert("Wrong token address provided.");
         }
         
+        if(participations[sender][week] == 0 || keys[sender].length == 0) {
+            keys[sender].push(week);
+        }
+
         participations[sender][week] += amount_;
         totalParticipations[week] += amount_;
-        keys[sender].push(week);
+        
         amount_ = 0;
 
         return true;
+    }
+
+    function percent(uint256 numerator, uint256 denominator, uint precision) public pure returns(uint256 quotient) {
+        // caution, check safe-to-multiply here
+        uint256 _numerator  = numerator * 10 ** (precision+1);
+        // with rounding of last digit
+        uint256 _quotient =  ((_numerator / denominator) + 5) / 10;
+        return ( _quotient);
     }
 
 
@@ -84,7 +98,8 @@ contract Reward is Context {
 
         for (uint i = 0; i < keys[msg.sender].length; i++) {
             uint week = keys[msg.sender][i];
-            toClaim += (participations[msg.sender][week] / totalWeek[week]) * totalParticipations[week];
+            uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 2);
+            toClaim += percent(ratio * totalWeek[week],100,0);
         }
 
         return toClaim;
@@ -92,34 +107,55 @@ contract Reward is Context {
 
 
     function claimTokens() payable public returns(bool) {
-        require(((block.timestamp - rewardStartTimestamp) / 604800) > 0, "You cannot retrieve your tokens yet!");
+        //require(((block.timestamp - rewardStartTimestamp) / 604800) > 0, "You cannot retrieve your tokens yet!");
 
         uint256 toClaim = 0;
         address bbst = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
 
-        uint currentWeek = (block.timestamp - rewardStartTimestamp) / 604800;
-        uint elemCurrentWeek;
+        uint currentWeek = ((block.timestamp - rewardStartTimestamp) / 604800) + 2;
+        uint elemCurrentWeek = 0;
 
         for (uint i = 0; i < keys[msg.sender].length; i++) {
             if (keys[msg.sender][i] == currentWeek) {
                 elemCurrentWeek = keys[msg.sender][i];
             } else {
                 uint week = keys[msg.sender][i];
-                toClaim += (participations[msg.sender][week] / totalWeek[week]) * totalParticipations[week];
+                uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 2);
+                uint256 gains = ratio > 3 ? percent(3 * totalWeek[week],100,0) : percent(ratio * totalWeek[week],100,0);
+                toClaim += gains;
             }
         }
 
-        IERC20(bbst).transfer(msg.sender, toClaim);
+        IERC20(bbst).transfer(msg.sender, toClaim*10**18);
 
-        if (elemCurrentWeek > 0) {
-            keys[msg.sender] = new uint[](0);
+        if (elemCurrentWeek == 0) {
+            delete keys[msg.sender];
         } else {
-            uint[] memory newKeys;
-            newKeys[0] = elemCurrentWeek;
-            keys[msg.sender] = newKeys;
+            delete keys[msg.sender];
+            keys[msg.sender].push(elemCurrentWeek);
         }
 
         return true;
+    }
+
+    function getKeys(address claimer) public view returns(uint256[] memory) {
+        return keys[claimer];
+    }
+
+    function getParticipations(address claimer, uint week) public view returns(uint256) {
+        return participations[claimer][week];
+    }
+
+    function getTotalWeek(uint week) public view returns(uint256) {
+        return totalWeek[week];
+    }
+
+    function getTotalParticipations(uint week) public view returns(uint256) {
+        return totalParticipations[week];
+    }
+
+    function getCurrrentWeek() public view returns(uint) {
+        return ((block.timestamp - rewardStartTimestamp) / 604800) + 1;
     }
 
 
