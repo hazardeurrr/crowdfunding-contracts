@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 
 import "./ICampaign.sol";
 import "./ERC20Payment.sol";
+import "./Reward.sol";
 
 contract Campaign is ICampaign, Context {
 
@@ -237,7 +238,10 @@ contract Campaign is ICampaign, Context {
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
         }
-        
+
+        Reward rdw;
+        rdw.participate(msg.sender, msg.value, address(token));
+
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
         raised = totalBalance;
@@ -271,6 +275,8 @@ contract Campaign is ICampaign, Context {
 
             // appeler ERC20 PAYMENT
             ERC20Payment(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+
+            Reward(0x6280c896F81f6dC5D997E914cBa6fd91e1A2a058).participate(msg.sender, amount, token);
 
             if(stock[indexTier] != -1){
                 stock[indexTier] = stock[indexTier] - 1;
