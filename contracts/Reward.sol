@@ -1,18 +1,17 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "./BlockBoosted.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract Reward is Context {
 
     using SafeMath for uint;
 
-    mapping(address => mapping(uint => uint256)) participations;
-    mapping(uint => uint256) totalWeek;
-    mapping(uint => uint256) totalParticipations;
+    mapping(address => mapping(uint => uint256)) public participations;
+    mapping(uint => uint256) public totalWeek;
+    mapping(uint => uint256) public totalParticipations;
 
-    mapping(address => uint[]) keys;
+    mapping(address => uint[]) public keys;
 
     uint tauxBBST = 1;
     uint tauxETH = 1;
@@ -20,15 +19,16 @@ contract Reward is Context {
 
     // uint currWeek = 1;
 
-    uint256 rewardStartTimestamp;
+    uint256 public rewardStartTimestamp;
 
     address owner;
 
     constructor () {
-        totalWeek[1] = 30000;
+        totalWeek[0] = 30000*10**18;
         owner = msg.sender;
         totalParticipations[0] = 0;
-        rewardStartTimestamp = block.timestamp;
+        //rewardStartTimestamp = block.timestamp;
+        rewardStartTimestamp = 1646393429;
     }
 
     modifier onlyOwner() {
@@ -56,11 +56,16 @@ contract Reward is Context {
         return true;
     }
 
+    function setRewardTimestamp(uint256 time) external returns(bool) {
+        rewardStartTimestamp = time;
+        return true;
+    }
+
 
     function participate(address sender, uint256 amount, address token) public returns(bool) {
 
         uint256 amount_ = amount;
-        uint week = ((block.timestamp - rewardStartTimestamp) / 604800) + 1;
+        uint week = ((block.timestamp - rewardStartTimestamp) / 604800);
 
         if (token == address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b)) {
             amount_ = amount_ * tauxUSDC;
@@ -93,13 +98,14 @@ contract Reward is Context {
     }
 
 
-    function getClaim() public view returns(uint256) {
+    function getClaim(address claimer) public view returns(uint256) {
         uint256 toClaim = 0;
 
-        for (uint i = 0; i < keys[msg.sender].length; i++) {
-            uint week = keys[msg.sender][i];
-            uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 2);
-            toClaim += percent(ratio * totalWeek[week],100,0);
+        for (uint i = 0; i < keys[claimer].length; i++) {
+            uint week = keys[claimer][i];
+            uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 7);
+            uint256 gains = ratio > 3*10**5 ? percent(3*10**5 * totalWeek[week],1*10**7,0) : percent(ratio * totalWeek[week],1*10**7,0);
+            toClaim += gains;
         }
 
         return toClaim;
@@ -107,12 +113,12 @@ contract Reward is Context {
 
 
     function claimTokens() payable public returns(bool) {
-        //require(((block.timestamp - rewardStartTimestamp) / 604800) > 0, "You cannot retrieve your tokens yet!");
+        require(((block.timestamp - rewardStartTimestamp) / 604800) > 0, "You cannot retrieve your tokens yet!");
 
         uint256 toClaim = 0;
         address bbst = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
 
-        uint currentWeek = ((block.timestamp - rewardStartTimestamp) / 604800) + 2;
+        uint currentWeek = ((block.timestamp - rewardStartTimestamp) / 604800);
         uint elemCurrentWeek = 0;
 
         for (uint i = 0; i < keys[msg.sender].length; i++) {
@@ -120,13 +126,13 @@ contract Reward is Context {
                 elemCurrentWeek = keys[msg.sender][i];
             } else {
                 uint week = keys[msg.sender][i];
-                uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 2);
-                uint256 gains = ratio > 3 ? percent(3 * totalWeek[week],100,0) : percent(ratio * totalWeek[week],100,0);
+                uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 7);
+                uint256 gains = ratio > 3*10**5 ? percent(3*10**5 * totalWeek[week],1*10**7,0) : percent(ratio * totalWeek[week],1*10**7,0);
                 toClaim += gains;
             }
         }
 
-        IERC20(bbst).transfer(msg.sender, toClaim*10**18);
+        IERC20(bbst).transfer(msg.sender, toClaim);
 
         if (elemCurrentWeek == 0) {
             delete keys[msg.sender];
@@ -155,7 +161,7 @@ contract Reward is Context {
     }
 
     function getCurrrentWeek() public view returns(uint) {
-        return ((block.timestamp - rewardStartTimestamp) / 604800) + 1;
+        return ((block.timestamp - rewardStartTimestamp) / 604800);
     }
 
 
