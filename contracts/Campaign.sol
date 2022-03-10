@@ -239,8 +239,7 @@ contract Campaign is ICampaign, Context {
             stock[indexTier] = stock[indexTier] - 1;
         }
 
-        Reward rdw;
-        rdw.participate(msg.sender, msg.value, address(token));
+        Reward(0x6280c896F81f6dC5D997E914cBa6fd91e1A2a058).participate(msg.sender, msg.value, token);
 
         //  adding the transaction value to the totalBalance
         totalBalance += msg.value;
