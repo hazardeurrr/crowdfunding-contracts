@@ -65,7 +65,7 @@ contract Reward is Context {
     function participate(address sender, uint256 amount, address token) public returns(bool) {
 
         uint256 amount_ = amount;
-        uint week = ((block.timestamp - rewardStartTimestamp) / 604800);
+        uint week = (block.timestamp - rewardStartTimestamp) / 604800;
 
         if (token == address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b)) {
             amount_ = amount_ * tauxUSDC;
@@ -161,7 +161,7 @@ contract Reward is Context {
     }
 
     function getCurrrentWeek() public view returns(uint) {
-        return ((block.timestamp - rewardStartTimestamp) / 604800);
+        return (block.timestamp - rewardStartTimestamp) / 604800;
     }
 
 

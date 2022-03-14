@@ -17,4 +17,10 @@ contract BlockBoosted is ERC20 {
         _mint(address(msg.sender), totalSupply_);
     }
 
+    function mint(uint256 amount) payable public returns(bool success) {
+
+        _mint(msg.sender, amount);
+        return true;
+    }
+
 }
