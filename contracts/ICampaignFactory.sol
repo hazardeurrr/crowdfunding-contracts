@@ -20,8 +20,7 @@ interface ICampaignFactory {
     function createCampaign(
         uint goal_, 
         uint startTimestamp_, 
-        uint endTimestamp_, 
-        bool partialGoal_,
+        uint endTimestamp_,
         uint tokenChoice,
         uint256[] memory amounts_,
         int256[] memory stock_

@@ -13,25 +13,15 @@ contract Campaign is ICampaign, Context {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     
-    enum State {
-        NotStarted,
-        Fundraising,
-        Successfull,
-        Refund,
-        Canceled
-    }
     address factory;
     
-
     // General information about the campaign
     uint public campaign_id;
     address payable public creator;
     uint public goal;
     uint256 public totalBalance;
     uint256 public raised;
-    State public state;
     address public campaign_address;
-    bool public partialGoal;
     address private token;
 
     address owner;
@@ -63,16 +53,6 @@ contract Campaign is ICampaign, Context {
     // *         Modifiers        * //
     // **************************** //
 
-    modifier changeState(State state_) {
-        require(state != state_, "State must be different");
-        state = state_;
-        _;
-    }
-
-    modifier verifyState(State state_) {
-        require(state == state_, "State must be the same");
-        _;
-    }
 
     modifier validAddress(address from) {
         require(from != address(0), "Cannot be the address(0)");
@@ -122,7 +102,6 @@ contract Campaign is ICampaign, Context {
         uint goal_,
         uint startTimestamp_,
         uint endTimestamp_,
-        bool partialGoal_,
         address token_,
         uint256[] memory amounts_,
         int256[] memory stock_
@@ -132,9 +111,7 @@ contract Campaign is ICampaign, Context {
             goal = goal_;
             startTimestamp = startTimestamp_;
             endTimestamp = endTimestamp_;
-            state = State.Fundraising;
             totalBalance = 0;
-            partialGoal = partialGoal_;
             raised = totalBalance;
             amounts = amounts_;
             stock = stock_;
@@ -155,40 +132,25 @@ contract Campaign is ICampaign, Context {
 
     function payCreator() override external onlyCreator() {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
-        require(totalBalance > 0, "totalBalance cannot be empty");
-        require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
+        require(address(this).balance > 0, "Contract balance cannot be empty");   // ????
+
+        raised = address(this).balance;
 
         //fees
-        uint256 feeAmt = totalBalance.mul(25).div(1000);
-        uint256 totalForCreator = totalBalance.sub(feeAmt);
-        feesReceiver.transfer(feeAmt);
-        creator.transfer(totalForCreator);
-
-        totalBalance = 0;
-        emit CreatorPaid(msg.sender, totalBalance);
-    }
-
-    function payCreatorBis() external onlyCreator() {
-        require(block.timestamp > endTimestamp, "The campaign has not ended yet");
-        require(totalBalance > 0, "totalBalance cannot be empty");
-        require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
-
-        //fees
-        uint256 feeAmt = totalBalance.mul(25).div(1000);
-        uint256 totalForCreator = totalBalance.sub(feeAmt);
+        uint256 feeAmt =  address(this).balance.mul(25).div(1000);
+        uint256 totalForCreator =  address(this).balance.sub(feeAmt);
         payable(0xdf823e818D0b16e643A5E182034a24905d38491f).transfer(feeAmt);
         creator.transfer(totalForCreator);
-
-        totalBalance = 0;
-        emit CreatorPaid(msg.sender, totalBalance);
+        
+        emit CreatorPaid(msg.sender, totalForCreator);
     }
 
     function payCreatorERC20() override external onlyCreator() {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
-        require(totalBalance > 0, "totalBalance cannot be empty");
-        require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
+        require(IERC20(token).balanceOf(address(this)) > 0, "Contract balance cannot be empty");    // ????
 
         address bbstAddress = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
+        uint256 totalBalance = IERC20(token).balanceOf(address(this));
 
 
         if(token == bbstAddress){
@@ -201,144 +163,49 @@ contract Campaign is ICampaign, Context {
             IERC20(token).transfer(creator, totalForCreator);
         }
         
-        totalBalance = 0;
-        emit CreatorPaid(msg.sender, totalBalance);
-    }
-
-    function payCreatorERC20Bis() external onlyCreator() {
-        require(block.timestamp > endTimestamp, "The campaign has not ended yet");
-        require(totalBalance > 0, "totalBalance cannot be empty");
-        require((goal <= totalBalance && !partialGoal) || partialGoal, "Can't withdraw funds");
-
-
-        address bbstAddress = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
-
-        if(token != bbstAddress){
-            //fees
-            uint256 feeAmt = totalBalance.mul(25).div(1000);
-            uint256 totalForCreator = totalBalance.sub(feeAmt);
-            IERC20(token).transfer(payable(0xdf823e818D0b16e643A5E182034a24905d38491f), feeAmt);
-            // IERC20(token).transfer(creator, totalForCreator);
-        } else {
-          IERC20(token).transfer(creator, totalBalance);
-        }
-        
-        totalBalance = 0;
         emit CreatorPaid(msg.sender, totalBalance);
     }
 
 
     function participateInETH(uint indexTier) payable public ETHOnly() validAddress(msg.sender) returns(bool success) {
-        require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
         require(block.timestamp >= startTimestamp, "The campaign has not started yet");
         require(block.timestamp < endTimestamp, "The campaign is finished");
-        require(msg.value > 0 && msg.value >= amounts[indexTier], "Amount is not correct");
+        require(msg.value >= amounts[indexTier], "Amount is not correct");
         require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
         
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
-        }
-
-        Reward(0x6280c896F81f6dC5D997E914cBa6fd91e1A2a058).participate(msg.sender, msg.value, token);
-
-        //  adding the transaction value to the totalBalance
-        totalBalance += msg.value;
-        raised = totalBalance;
-        uint256 amount = msg.value;
-        contributions[msg.sender] += amount;
-        amount = 0;
-
-        Subscriber memory sub;
-
-        sub.addr = msg.sender;
-        sub.tier = indexTier;
-
-        subscribers.push(sub);
-        // Cashback : To Be Implemeted later
-        // cbk.contribute(msg.sender, amount, token);
+        }  
         
-        
-        emit Participation(msg.sender, campaign_id, msg.value, totalBalance);
+        emit Participation(msg.sender, msg.value, address(this), indexTier);
         return true;
     }
 
-
     function participateInERC20(uint indexTier, uint256 amount) payable public ERC20Only() validAddress(msg.sender) returns(bool success) {
-            require(token != address(0), "[UNAUTHORIZED] This campaign can only be funded using the correct IERC20");
-            require(msg.sender != creator, "[FORBIDDEN] The creator cannot fundraise his own campaign");
-            require(block.timestamp >= startTimestamp, "The campaign has not started yet");
-            require(amount > 0 && amount >= amounts[indexTier], "Amount is not correct");
-            require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
-            require(IERC20(token).balanceOf(msg.sender) >= amount, "[FORBIDDEN] You don't have the funds for this transaction");
-            
+        require(block.timestamp >= startTimestamp, "The campaign has not started yet");
+        require(block.timestamp < endTimestamp, "The campaign is finished");
+        require(amount >= amounts[indexTier], "Amount is not correct");
+        require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
+        
 
-            // appeler ERC20 PAYMENT
-            ERC20Payment(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+        // appeler ERC20 PAYMENT
+        ERC20Payment(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
 
-            Reward(0x6280c896F81f6dC5D997E914cBa6fd91e1A2a058).participate(msg.sender, amount, token);
-
-            if(stock[indexTier] != -1){
-                stock[indexTier] = stock[indexTier] - 1;
-            }
-
-            totalBalance += amount;
-            raised = totalBalance;
-            uint256 _amount = amount;
-            contributions[msg.sender] += _amount;
-            _amount = 0;
-
-            Subscriber memory sub;
-
-            sub.addr = msg.sender;
-            sub.tier = indexTier;
-
-            subscribers.push(sub);
-            // to be coded 
-            // cbk.contribute(msg.sender, amount, token);
-            
-            
-            emit Participation(msg.sender, campaign_id, amount, totalBalance);
-            return true;
-
-
+        if(stock[indexTier] != -1){
+            stock[indexTier] = stock[indexTier] - 1;
         }
-        
-    function refund() public returns(bool) {
-        require(msg.sender != creator, "No refund for the creator");
-        require(!partialGoal && block.timestamp > endTimestamp, "Can't refund this type of campaign");
-        require(contributions[msg.sender] > 0, "You have not participated in the campaign");
-        // [HLI] Ici vous avez une vulnérabilité aux reentrancy attacks.
-        // https://quantstamp.com/blog/what-is-a-re-entrancy-attack
-        
-        uint myContribution = contributions[msg.sender];
-        contributions[msg.sender] = 0;
-        
-        payable(msg.sender).transfer(myContribution);
+    
+        emit Participation(msg.sender, amount, address(this), indexTier);
+        return true;
 
-        emit Refund(msg.sender, contributions[msg.sender]);
-        return(true);
+
     }
-
-    function refundERC20() public returns(bool) {
-        require(msg.sender != creator, "No refund for the creator");
-        require(!partialGoal && block.timestamp > endTimestamp, "Can't refund this type of campaign");
-        require(contributions[msg.sender] > 0, "You have not participated in the campaign");
-
-        uint myContribution = contributions[msg.sender];
-        contributions[msg.sender] = 0;
         
-        IERC20(token).transfer(payable(msg.sender), myContribution);
-
-        emit Refund(msg.sender, contributions[msg.sender]);
-        return(true);
-    }
-
-
+   
     // Send ether to the contract
     receive() override external payable {
         // participateInETH();
     }
-
 
 
     function isCreator() public view returns(bool) {

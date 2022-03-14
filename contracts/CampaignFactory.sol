@@ -82,8 +82,7 @@ contract CampaignFactory {
     function createCampaign(
         uint goal_, 
         uint startTimestamp_, 
-        uint endTimestamp_, 
-        bool partialGoal_,
+        uint endTimestamp_,
         uint tokenChoice,
         uint256[] memory amounts_,
         int256[] memory stock_
@@ -94,7 +93,7 @@ contract CampaignFactory {
             address newCampaign = Clones.clone(masterCampaignAddress);
             
             address payable nA = payable(newCampaign);
-            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, partialGoal_, currencies[tokenChoice], amounts_, stock_);
+            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], amounts_, stock_);
             
             uint crCampaignNumber = creatorCampaignNumber[msg.sender];
             campaigns[msg.sender] = CampaignSaved(newCampaign, crCampaignNumber);
