@@ -1,6 +1,5 @@
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 
@@ -10,34 +9,22 @@ import "./Reward.sol";
 
 contract Campaign is ICampaign, Context {
 
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    
     address factory;
     
     // General information about the campaign
     uint public campaign_id;
     address payable public creator;
     uint public goal;
-    uint256 public totalBalance;
     uint256 public raised;
     address public campaign_address;
     address private token;
 
     address owner;
 
-    address payable feesReceiver = payable(0x4f4A40B732A8D6e87CbC720142ad63Dc9D828139);
-
     // Starting and ending date for the campaign
     uint public startTimestamp;
     uint public endTimestamp;
-
-    mapping(address => uint) public contributions;
-
-    struct Subscriber {
-        address addr;
-        uint tier;
-    }
 
     uint256[] public amounts;
     int256[] public stock;
@@ -47,32 +34,12 @@ contract Campaign is ICampaign, Context {
         owner = msg.sender;
     }
 
-    Subscriber[] public subscribers;
-
     // **************************** //
     // *         Modifiers        * //
     // **************************** //
 
 
-    modifier validAddress(address from) {
-        require(from != address(0), "Cannot be the address(0)");
-        _;
-    }
 
-    modifier validAmount(uint amount_) {
-        require(amount_ > 0, "Amount cannot be equal or less than 0");
-        _;
-    }
-
-    modifier ETHOnly() {
-        require(token == address(address(0)), "[WARNING] This campaign only receives ETH");
-        _;
-    }
-
-    modifier ERC20Only() {
-        require(token != address(address(0)), "[WARNING] This campaign only receives ERC20");
-        _;
-    }
 
     modifier onlyOwner() {
         require(owner == _msgSender(), "You are not the Owner");
@@ -111,8 +78,7 @@ contract Campaign is ICampaign, Context {
             goal = goal_;
             startTimestamp = startTimestamp_;
             endTimestamp = endTimestamp_;
-            totalBalance = 0;
-            raised = totalBalance;
+            raised = 0;
             amounts = amounts_;
             stock = stock_;
             token = token_;
@@ -137,8 +103,8 @@ contract Campaign is ICampaign, Context {
         raised = address(this).balance;
 
         //fees
-        uint256 feeAmt =  address(this).balance.mul(25).div(1000);
-        uint256 totalForCreator =  address(this).balance.sub(feeAmt);
+        uint256 feeAmt =  (address(this).balance * 25) / 1000;
+        uint256 totalForCreator =  address(this).balance - feeAmt;
         payable(0xdf823e818D0b16e643A5E182034a24905d38491f).transfer(feeAmt);
         creator.transfer(totalForCreator);
         
@@ -151,14 +117,15 @@ contract Campaign is ICampaign, Context {
 
         address bbstAddress = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
         uint256 totalBalance = IERC20(token).balanceOf(address(this));
+        raised = totalBalance;
 
 
         if(token == bbstAddress){
             //fees
             IERC20(token).transfer(creator, totalBalance);
         } else {
-          uint256 feeAmt = totalBalance.mul(25).div(1000);
-            uint256 totalForCreator = totalBalance.sub(feeAmt);
+          uint256 feeAmt = (totalBalance * 25) / 1000;
+            uint256 totalForCreator = totalBalance - feeAmt;
             IERC20(token).transfer(payable(0xdf823e818D0b16e643A5E182034a24905d38491f), feeAmt);
             IERC20(token).transfer(creator, totalForCreator);
         }
@@ -167,7 +134,7 @@ contract Campaign is ICampaign, Context {
     }
 
 
-    function participateInETH(uint indexTier) payable public ETHOnly() validAddress(msg.sender) returns(bool success) {
+    function participateInETH(uint indexTier) payable public returns(bool success) {
         require(block.timestamp >= startTimestamp, "The campaign has not started yet");
         require(block.timestamp < endTimestamp, "The campaign is finished");
         require(msg.value >= amounts[indexTier], "Amount is not correct");
@@ -181,7 +148,7 @@ contract Campaign is ICampaign, Context {
         return true;
     }
 
-    function participateInERC20(uint indexTier, uint256 amount) payable public ERC20Only() validAddress(msg.sender) returns(bool success) {
+    function participateInERC20(uint indexTier, uint256 amount) payable public returns(bool success) {
         require(block.timestamp >= startTimestamp, "The campaign has not started yet");
         require(block.timestamp < endTimestamp, "The campaign is finished");
         require(amount >= amounts[indexTier], "Amount is not correct");
@@ -197,8 +164,6 @@ contract Campaign is ICampaign, Context {
     
         emit Participation(msg.sender, amount, address(this), indexTier);
         return true;
-
-
     }
         
    
@@ -222,8 +187,5 @@ contract Campaign is ICampaign, Context {
         return stock;
     }
 
-    function getSubs() public view returns (Subscriber[] memory) {
-        return subscribers;
-    }
 
 }

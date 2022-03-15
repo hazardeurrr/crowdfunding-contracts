@@ -12,10 +12,7 @@ contract Reward is Context {
     mapping(uint => uint256) public totalParticipations;
 
     mapping(address => uint[]) public keys;
-
-    uint tauxBBST = 1;
-    uint tauxETH = 1;
-    uint tauxUSDC = 1;
+    mapping(address => uint) taux;
 
     // uint currWeek = 1;
 
@@ -29,6 +26,10 @@ contract Reward is Context {
         totalParticipations[0] = 0;
         //rewardStartTimestamp = block.timestamp;
         rewardStartTimestamp = 1646393429;
+
+        taux[address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b)] = 1; // taux usdc
+        taux[address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55)] = 1; // taux BBST
+        taux[address(0x0000000000000000000000000000000000000000)] = 1; // taux ETH
     }
 
     modifier onlyOwner() {
@@ -42,17 +43,17 @@ contract Reward is Context {
     }
 
     function setTauxBBST(uint newTaux) external onlyOwner() returns(bool) {
-        tauxBBST = newTaux;
+        taux[address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55)] = newTaux;
         return true;
     }
 
     function setTauxUSDC(uint newTaux) external onlyOwner() returns(bool) {
-        tauxUSDC = newTaux;
+        taux[address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b)] = newTaux;
         return true;
     }
 
     function setTauxETH(uint newTaux) external onlyOwner() returns(bool) {
-        tauxETH = newTaux;
+        taux[address(0x0000000000000000000000000000000000000000)] = newTaux;
         return true;
     }
 
@@ -67,12 +68,8 @@ contract Reward is Context {
         uint256 amount_ = amount;
         uint week = (block.timestamp - rewardStartTimestamp) / 604800;
 
-        if (token == address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b)) {
-            amount_ = amount_ * tauxUSDC;
-        } else if (token == address(0x0000000000000000000000000000000000000000)) {
-            amount_ = amount_ * tauxETH;
-        } else if (token == address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55)) {
-            amount_ = amount_ * tauxBBST;
+        if (taux[token] != 0) {
+            amount_ = amount_ * taux[token];
         } else {
             revert("Wrong token address provided.");
         }
