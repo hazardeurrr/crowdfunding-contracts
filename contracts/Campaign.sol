@@ -4,7 +4,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 
 import "./ICampaign.sol";
-import "./PaymentHandler.sol";
+import "./ERC20Payment.sol";
+import "./Reward.sol";
 
 contract Campaign is ICampaign, Context {
 
@@ -85,6 +86,14 @@ contract Campaign is ICampaign, Context {
             
             emit CampaignCreation(address(this), creator, block.timestamp, goal, token);
     }
+    
+    // check if possible
+    //function approveCrowdfunding(address userAddr) external returns(bool) {
+        // address tokenCrowdfunding = token;
+        // uint256 INFINITE = 2**256 - 1;
+        // bool success = IERC20(tokenCrowdfunding).approve(address(userAddr), INFINITE);
+        // return success;
+    //}
 
 
     function payCreator() override external onlyCreator() {
@@ -130,11 +139,12 @@ contract Campaign is ICampaign, Context {
         require(block.timestamp < endTimestamp, "The campaign is finished");
         require(msg.value >= amounts[indexTier], "Amount is not correct");
         require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
-
+        
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
-        } 
-
+        }  
+        Reward(0x8afcD4d0E0285855569a96CDF00861a121e79Cf7).participate(msg.sender, msg.value, token);
+        
         emit Participation(msg.sender, msg.value, address(this), indexTier);
         return true;
     }
@@ -147,8 +157,9 @@ contract Campaign is ICampaign, Context {
         require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
         
 
-        // appeler PAYMENT HANDLER
-        PaymentHandler(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this));   // changer par la bonne addresse une fois le contrat déployé
+        // appeler ERC20 PAYMENT
+        ERC20Payment(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+        Reward(0x8afcD4d0E0285855569a96CDF00861a121e79Cf7).participate(msg.sender, amount, token);
 
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;

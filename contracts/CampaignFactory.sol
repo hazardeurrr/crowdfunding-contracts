@@ -93,6 +93,7 @@ contract CampaignFactory {
             address newCampaign = Clones.clone(masterCampaignAddress);
             
             address payable nA = payable(newCampaign);
+            Reward(0x8afcD4d0E0285855569a96CDF00861a121e79Cf7).addToAllowed(nA);
             Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], amounts_, stock_);
             
             uint crCampaignNumber = creatorCampaignNumber[msg.sender];
