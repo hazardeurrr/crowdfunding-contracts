@@ -15,13 +15,11 @@ contract Reward is Context {
     mapping(address => bool) public allowed;
     address factory;
 
-    constructor () {
-              rewardStartTimestamp = 1646393429;
-
+    constructor (address _admin) {
         owner = msg.sender;
-        rates[0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b] = 4000;
-        rates[0x0000000000000000000000000000000000000000] = 1;
-        rates[0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55] = 2000;
+        //rewardStartTimestamp = block.timestamp;
+        rewardStartTimestamp = 1646393429;
+        admin = _admin;
     }
 
 
@@ -42,9 +40,20 @@ contract Reward is Context {
         _;
     }
 
-
+    modifier onlyAdmin() {
+        require(admin == _msgSender(), "You are not the Admin");
+    }
 
     ////****functions****////
+
+    function setRewardTimestamp(uint256 time) external returns(bool) {
+        rewardStartTimestamp = time;
+        return true;
+    }
+
+    function updateAdmin(address newAdmin) onlyAdmin() external {
+        admin = newAdmin;
+    }
 
     function addToAllowed(address newAddress) onlyFactory() public {
         allowed[newAddress] = true;
@@ -63,5 +72,61 @@ contract Reward is Context {
         emit Participation(sender, block.timestamp, amount, token);
 
         return true;
+    }
+
+    function claimTokens(address recipient, uint amount, bytes calldata signature) external {
+        bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount)));
+
+        require(recoverSigner(message, signature) == admin , 'CLAIM DENIED : WRONG SIGNATURE');
+
+        token.transfer(recipient, amount);
+        lastClaim[recipient] = block.timestamp;
+
+        emit Claimed(recipient, amount, block.timestamp);
+    }
+
+    function prefixed(bytes32 hash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked('\x19Ethereum Signed Message:\n32', hash));
+    }
+
+    function recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    
+        (v, r, s) = splitSignature(sig);
+    
+        return ecrecover(message, v, r, s);
+    }
+
+    function splitSignature(bytes memory sig) internal pure returns (uint8, bytes32, bytes32) {
+        require(sig.length == 65);
+    
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+    
+        assembly {
+            // first 32 bytes, after the length prefix
+            r := mload(add(sig, 32))
+            // second 32 bytes
+            s := mload(add(sig, 64))
+            // final byte (first byte of the next 32 bytes)
+            v := byte(0, mload(add(sig, 96)))
+        }
+    
+        return (v, r, s);
+    }
+
+    function getLastClaim(address claimer) public view returns(uint256) {
+        return lastClaim[claimer];
+    }
+
+    function getCurrentWeek() public view returns(uint) {
+        return (block.timestamp - rewardStartTimestamp) / 604800;
+    }
+
+    function getStartTimestamp() public view returns(uint) {
+        return rewardStartTimestamp;
     }
 }
