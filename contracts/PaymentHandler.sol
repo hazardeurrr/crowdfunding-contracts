@@ -19,7 +19,7 @@ contract PaymentHandler is Context {
     // **************************** //
     
 
-    function payInERC20(uint256 amount, address userAddr, address campaign) payable public {
+    function payInERC20(uint256 amount, address userAddr, address campaign, address token) payable public {
         IERC20(token).transferFrom(userAddr, campaign, amount);
     }
 

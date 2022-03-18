@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 
 import "./ICampaign.sol";
-import "./ERC20Payment.sol";
+import "./PaymentHandler.sol";
 import "./Reward.sol";
 
 contract Campaign is ICampaign, Context {
@@ -158,7 +158,7 @@ contract Campaign is ICampaign, Context {
         
 
         // appeler ERC20 PAYMENT
-        ERC20Payment(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+        PaymentHandler(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
         Reward(0x8afcD4d0E0285855569a96CDF00861a121e79Cf7).participate(msg.sender, amount, token);
 
         if(stock[indexTier] != -1){

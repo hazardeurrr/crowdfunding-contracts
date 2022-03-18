@@ -6,19 +6,21 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract Reward is Context {
 
     address owner;
+    address admin;
     uint256 public rewardStartTimestamp;
 
-    event Participation(address indexed user, uint timestamp, uint256 amount, address token);
-
+    event Participate(address indexed user, uint timestamp, uint256 amount, address token);
+    event Claimed(address claimer, uint256 amount, uint256 timestamp);
 
     mapping(address => uint256) public rates;
     mapping(address => bool) public allowed;
+    mapping(address => uint256) public lastClaim;
     address factory;
 
     constructor (address _admin) {
         owner = msg.sender;
         //rewardStartTimestamp = block.timestamp;
-        rewardStartTimestamp = 1646393429;
+        rewardStartTimestamp = 1646998233;
         admin = _admin;
     }
 
@@ -42,6 +44,7 @@ contract Reward is Context {
 
     modifier onlyAdmin() {
         require(admin == _msgSender(), "You are not the Admin");
+        _;
     }
 
     ////****functions****////
@@ -63,13 +66,8 @@ contract Reward is Context {
         factory = factoryAddress;
     }
 
-    function setRewardTimestamp(uint256 time) external returns(bool) {
-        rewardStartTimestamp = time;
-        return true;
-    }
-
     function participate(address sender, uint256 amount, address token) onlyAllowed() public returns(bool) {
-        emit Participation(sender, block.timestamp, amount, token);
+        emit Participate(sender, block.timestamp, amount, token);
 
         return true;
     }
@@ -77,9 +75,9 @@ contract Reward is Context {
     function claimTokens(address recipient, uint amount, bytes calldata signature) external {
         bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount)));
 
-        require(recoverSigner(message, signature) == admin , 'CLAIM DENIED : WRONG SIGNATURE');
+        require(recoverSigner(message, signature) == admin, 'CLAIM DENIED : WRONG SIGNATURE');
 
-        token.transfer(recipient, amount);
+        IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
         lastClaim[recipient] = block.timestamp;
 
         emit Claimed(recipient, amount, block.timestamp);
