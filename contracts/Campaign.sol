@@ -11,16 +11,16 @@ contract Campaign is ICampaign, Context {
 
     using SafeERC20 for IERC20;
     address factory;
+    address owner;
     
     // General information about the campaign
     uint public campaign_id;
-    address payable public creator;
     uint public goal;
     uint256 public raised;
+    address payable public creator;
     address public campaign_address;
     address private token;
 
-    address owner;
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -86,14 +86,6 @@ contract Campaign is ICampaign, Context {
             
             emit CampaignCreation(address(this), creator, block.timestamp, goal, token);
     }
-    
-    // check if possible
-    //function approveCrowdfunding(address userAddr) external returns(bool) {
-        // address tokenCrowdfunding = token;
-        // uint256 INFINITE = 2**256 - 1;
-        // bool success = IERC20(tokenCrowdfunding).approve(address(userAddr), INFINITE);
-        // return success;
-    //}
 
 
     function payCreator() override external onlyCreator() {

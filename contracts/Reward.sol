@@ -7,6 +7,7 @@ contract Reward is Context {
 
     address owner;
     address admin;
+    address factory;
     uint256 public rewardStartTimestamp;
 
     event Participate(address indexed user, uint timestamp, uint256 amount, address token);
@@ -15,7 +16,6 @@ contract Reward is Context {
     mapping(address => uint256) public rates;
     mapping(address => bool) public allowed;
     mapping(address => uint256) public lastClaim;
-    address factory;
 
     constructor (address _admin) {
         owner = msg.sender;
@@ -77,8 +77,9 @@ contract Reward is Context {
 
         require(recoverSigner(message, signature) == admin, 'CLAIM DENIED : WRONG SIGNATURE');
 
+        // BBST token address
         IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
-        lastClaim[recipient] = block.timestamp;
+        lastClaim[recipient] = block.number;
 
         emit Claimed(recipient, amount, block.timestamp);
     }
