@@ -10,6 +10,8 @@ contract Reward is Context {
     address factory;
     uint256 public rewardStartTimestamp;
 
+    bool active;
+
     event Participate(address indexed user, uint timestamp, uint256 amount, address token);
     event Claimed(address claimer, uint256 amount, uint256 timestamp);
 
@@ -19,9 +21,9 @@ contract Reward is Context {
 
     constructor (address _admin) {
         owner = msg.sender;
-        //rewardStartTimestamp = block.timestamp;
-        rewardStartTimestamp = 1646998233;
+        rewardStartTimestamp = block.timestamp;
         admin = _admin;
+        active = true;
     }
 
 
@@ -47,11 +49,19 @@ contract Reward is Context {
         _;
     }
 
+    modifier onlyWhenActive() {
+        require(active == true, "Rewards are not active at the moment");
+        _;
+    }
+
     ////****functions****////
 
-    function setRewardTimestamp(uint256 time) external returns(bool) {
+    function setActive(bool state) onlyOwner() external {
+        active = state;
+    }
+
+    function setRewardTimestamp(uint256 time) onlyOwner() external {
         rewardStartTimestamp = time;
-        return true;
     }
 
     function updateAdmin(address newAdmin) onlyAdmin() external {
@@ -72,10 +82,13 @@ contract Reward is Context {
         return true;
     }
 
-    function claimTokens(address recipient, uint amount, bytes calldata signature) external {
+    function claimTokens(address recipient, uint amount, bytes calldata signature) onlyWhenActive() external {
+        require(amount <= 450, "CLAIM DENIED : INCORRECT AMOUNT");
+        require(balanceOf(address(this)) > 0, "Not enough tokens in the contract");
+
         bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount)));
 
-        require(recoverSigner(message, signature) == admin, 'CLAIM DENIED : WRONG SIGNATURE');
+        require(recoverSigner(message, signature) == admin, "CLAIM DENIED : WRONG SIGNATURE");
 
         // BBST token address
         IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
@@ -85,7 +98,7 @@ contract Reward is Context {
     }
 
     function prefixed(bytes32 hash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked('\x19Ethereum Signed Message:\n32', hash));
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     }
 
     function recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
