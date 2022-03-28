@@ -18,6 +18,7 @@ contract Reward is Context {
     mapping(address => uint256) public rates;
     mapping(address => bool) public allowed;
     mapping(address => uint256) public lastClaim;
+    mapping(address => uint) public nbClaim;
 
     constructor (address _admin) {
         owner = msg.sender;
@@ -84,15 +85,17 @@ contract Reward is Context {
 
     function claimTokens(address recipient, uint amount, bytes calldata signature) onlyWhenActive() external {
         require(amount <= 450, "CLAIM DENIED : INCORRECT AMOUNT");
+        require(recipient == msg.sender, "CLAIM DENIED");
         require(IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).balanceOf(address(this)) > 0, "Not enough tokens in the contract");
 
-        bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount)));
+        bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount, nbClaim[recipient])));
 
         require(recoverSigner(message, signature) == admin, "CLAIM DENIED : WRONG SIGNATURE");
 
         // BBST token address
         IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
         lastClaim[recipient] = block.number;
+        nbClaim[recipient] += 1;
 
         emit Claimed(recipient, amount, block.timestamp);
     }
@@ -140,5 +143,9 @@ contract Reward is Context {
 
     function getStartTimestamp() public view returns(uint) {
         return rewardStartTimestamp;
+    }
+
+    function getNbClaim(address claimer) public view returns(uint) {
+        return nbClaim[claimer];
     }
 }
