@@ -84,7 +84,7 @@ contract Reward is Context {
 
     function claimTokens(address recipient, uint amount, bytes calldata signature) onlyWhenActive() external {
         require(amount <= 450, "CLAIM DENIED : INCORRECT AMOUNT");
-        require(balanceOf(address(this)) > 0, "Not enough tokens in the contract");
+        require(IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).balanceOf(address(this)) > 0, "Not enough tokens in the contract");
 
         bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount)));
 
