@@ -15,8 +15,7 @@ contract Reward is Context {
     event Participate(address indexed user, uint timestamp, uint256 amount, address token);
     event Claimed(address claimer, uint256 amount, uint256 timestamp);
 
-    mapping(address => uint256) public rates;
-    mapping(address => bool) public allowed;
+    mapping(address => bool) allowed;
     mapping(address => uint256) public lastClaim;
     mapping(address => uint) public nbClaim;
 
@@ -45,11 +44,6 @@ contract Reward is Context {
         _;
     }
 
-    modifier onlyAdmin() {
-        require(admin == _msgSender(), "You are not the Admin");
-        _;
-    }
-
     modifier onlyWhenActive() {
         require(active == true, "Rewards are not active at the moment");
         _;
@@ -65,7 +59,7 @@ contract Reward is Context {
         rewardStartTimestamp = time;
     }
 
-    function updateAdmin(address newAdmin) onlyAdmin() external {
+    function updateAdmin(address newAdmin) onlyOwner() external {
         admin = newAdmin;
     }
 
@@ -83,11 +77,9 @@ contract Reward is Context {
         return true;
     }
 
-    function claimTokens(address recipient, uint amount, bytes calldata signature) onlyWhenActive() external {
-        require(amount <= 450, "CLAIM DENIED : INCORRECT AMOUNT");
-        require(recipient == msg.sender, "CLAIM DENIED");
-        require(IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).balanceOf(address(this)) > 0, "Not enough tokens in the contract");
+    function claimTokens(uint amount, bytes calldata signature) onlyWhenActive() external {
 
+        address recipient = msg.sender;
         bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount, nbClaim[recipient])));
 
         require(recoverSigner(message, signature) == admin, "CLAIM DENIED : WRONG SIGNATURE");
@@ -101,6 +93,7 @@ contract Reward is Context {
     }
 
     function prefixed(bytes32 hash) internal pure returns (bytes32) {
+
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     }
 
@@ -137,15 +130,7 @@ contract Reward is Context {
         return lastClaim[claimer];
     }
 
-    function getCurrentWeek() public view returns(uint) {
-        return (block.timestamp - rewardStartTimestamp) / 604800;
-    }
-
-    function getStartTimestamp() public view returns(uint) {
-        return rewardStartTimestamp;
-    }
-
-    function getNbClaim(address claimer) public view returns(uint) {
-        return nbClaim[claimer];
+    function getBalance() onlyOwner() public view returns(uint256) {
+        return IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).balanceOf(address(this));
     }
 }

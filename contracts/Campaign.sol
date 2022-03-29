@@ -10,7 +10,7 @@ import "./Reward.sol";
 contract Campaign is ICampaign, Context {
 
     using SafeERC20 for IERC20;
-    address factory;
+   // address factory;
     address owner;
     
     // General information about the campaign
@@ -47,7 +47,7 @@ contract Campaign is ICampaign, Context {
     }
     
     modifier onlyFactory() {
-        require(factory == _msgSender(), "You are not the Factory");
+        require(0x0000000000000000000000000000000000000000 == _msgSender(), "You are not the Factory");
         _;
     }
     
@@ -72,7 +72,7 @@ contract Campaign is ICampaign, Context {
         address token_,
         uint256[] memory amounts_,
         int256[] memory stock_
-        ) override external {
+        ) onlyFactory() override external {
             creator = creator_;
             campaign_id = campaign_id_;
             goal = goal_;
@@ -135,7 +135,7 @@ contract Campaign is ICampaign, Context {
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
         }  
-        Reward(0x8afcD4d0E0285855569a96CDF00861a121e79Cf7).participate(msg.sender, msg.value, token);
+        Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).participate(msg.sender, msg.value, token);
         
         emit Participation(msg.sender, msg.value, address(this), indexTier);
         return true;
@@ -150,8 +150,8 @@ contract Campaign is ICampaign, Context {
         
 
         // appeler ERC20 PAYMENT
-        PaymentHandler(0x4FbcC5abC094badb24F6555D140c75bC55221Fb5).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
-        Reward(0x8afcD4d0E0285855569a96CDF00861a121e79Cf7).participate(msg.sender, amount, token);
+        PaymentHandler(0x6E48cEC04a7371D263E36Ef2282760E6cA267eE9).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+        Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).participate(msg.sender, amount, token);
 
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
@@ -165,12 +165,6 @@ contract Campaign is ICampaign, Context {
     // Send ether to the contract
     receive() override external payable {
         // participateInETH();
-    }
-
-
-    function isCreator() public view returns(bool) {
-        require(msg.sender == creator, "You are not the creator of this campaign");
-        return true;
     }
 
 

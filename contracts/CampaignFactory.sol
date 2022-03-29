@@ -19,20 +19,23 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 contract CampaignFactory {
     using SafeMath for uint;
 
-    mapping(address => bool) public blacklist;
     struct CampaignSaved {
         address campaignAddress;
         uint id;
     }
 
-    mapping(uint => address) public currencies;
-    uint public indexCurrencies;
-    mapping(address => CampaignSaved) public campaigns;
+    mapping(address => bool) public blacklist;
     mapping(address => uint) public creatorCampaignNumber;
+    mapping(address => CampaignSaved) public campaigns;
+    mapping(uint => address) public currencies;
+
     address[]  public allCrowdFund;
     address public masterCampaignAddress;
-    uint256 public nbCampaign;
     address public token;
+    address onwer;
+
+    uint256 public nbCampaign;
+    uint public indexCurrencies;
     
     // TOKEN ADDRESSES
 
@@ -43,7 +46,13 @@ contract CampaignFactory {
         _;
     }
 
-    constructor(address masterCampaignAddress_) {
+    modifier onlyOwner() {
+        require(owner == _msgSender(), "You are not the Owner");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
         address usdc = address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b);
         setCurrencies(0, usdc);
         setCurrencies(1, 0x0000000000000000000000000000000000000000);
@@ -51,11 +60,10 @@ contract CampaignFactory {
         setCurrencies(2, bbst);
         nbCampaign = 0;
         indexCurrencies = 0;
-        masterCampaignAddress = masterCampaignAddress_;
     }
 
     // Setting up the proxy
-    function setMasterCampaignAddress(address newAddress) public returns(address) {
+    function setMasterCampaignAddress(address newAddress) onlyOwner() public returns(address) {
         masterCampaignAddress = newAddress;
         return(masterCampaignAddress);
     }
@@ -69,7 +77,7 @@ contract CampaignFactory {
         return(currencies[index]);
     }
 
-    function setCurrencies(uint index, address currencyAddress) public returns(bool) {
+    function setCurrencies(uint index, address currencyAddress) onlyOwner() public returns(bool) {
         require(index >= 0, "index must be positive");
         currencies[index] = currencyAddress;
         return(true);
@@ -93,7 +101,7 @@ contract CampaignFactory {
             address newCampaign = Clones.clone(masterCampaignAddress);
             
             address payable nA = payable(newCampaign);
-            Reward(0x8afcD4d0E0285855569a96CDF00861a121e79Cf7).addToAllowed(nA);
+            Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).addToAllowed(nA);
             Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], amounts_, stock_);
             
             uint crCampaignNumber = creatorCampaignNumber[msg.sender];
@@ -109,11 +117,11 @@ contract CampaignFactory {
     // **************************** //
 
 
-    function addToBlacklist(address newAddress) public {
+    function addToBlacklist(address newAddress) onlyOwner() public {
         blacklist[newAddress] = true;
     }
     
-    function removeFromBlacklist(address addressToRemove)  public {
+    function removeFromBlacklist(address addressToRemove) onlyOwner() public {
         blacklist[addressToRemove] = false;
     }
 
