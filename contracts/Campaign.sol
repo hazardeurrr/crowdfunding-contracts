@@ -134,7 +134,8 @@ contract Campaign is ICampaign, Context {
         
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
-        }  
+        }
+
         Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).participate(msg.sender, msg.value, token);
         
         emit Participation(msg.sender, msg.value, address(this), indexTier);
@@ -147,15 +148,14 @@ contract Campaign is ICampaign, Context {
         require(block.timestamp < endTimestamp, "The campaign is finished");
         require(amount >= amounts[indexTier], "Amount is not correct");
         require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
-        
 
         // appeler ERC20 PAYMENT
-        PaymentHandler(0x6E48cEC04a7371D263E36Ef2282760E6cA267eE9).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
-        Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).participate(msg.sender, amount, token);
-
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
         }
+
+        PaymentHandler(0x6E48cEC04a7371D263E36Ef2282760E6cA267eE9).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+        Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).participate(msg.sender, amount, token);
     
         emit Participation(msg.sender, amount, address(this), indexTier);
         return true;

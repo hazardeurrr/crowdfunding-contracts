@@ -85,9 +85,10 @@ contract Reward is Context {
         require(recoverSigner(message, signature) == admin, "CLAIM DENIED : WRONG SIGNATURE");
 
         // BBST token address
-        IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
         lastClaim[recipient] = block.number;
         nbClaim[recipient] += 1;
+        
+        IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
 
         emit Claimed(recipient, amount, block.timestamp);
     }
