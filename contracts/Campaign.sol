@@ -47,7 +47,7 @@ contract Campaign is ICampaign, Context {
     }
     
     modifier onlyFactory() {
-        require(0x0000000000000000000000000000000000000000 == _msgSender(), "You are not the Factory");
+        require(0x45593C5Ebe4477275703F204DCDd1019E3408Bf3 == _msgSender(), "You are not the Factory");
         _;
     }
     
@@ -87,6 +87,11 @@ contract Campaign is ICampaign, Context {
             emit CampaignCreation(address(this), creator, block.timestamp, goal, token);
     }
 
+    // to change the owner of the contract
+    function changeOwner(address newOwner) public onlyOwner() {
+        owner = newOwner;
+    }
+
 
     function payCreator() override external onlyCreator() {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
@@ -107,7 +112,7 @@ contract Campaign is ICampaign, Context {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
         require(IERC20(token).balanceOf(address(this)) > 0, "Contract balance cannot be empty");    // ????
 
-        address bbstAddress = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
+        address bbstAddress = address(0x24600539D8Fa2D29C58366512d08EE082A6c0cB3);
         uint256 totalBalance = IERC20(token).balanceOf(address(this));
         raised = totalBalance;
 
@@ -134,9 +139,8 @@ contract Campaign is ICampaign, Context {
         
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
-        }
-
-        Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).participate(msg.sender, msg.value, token);
+        }  
+        Reward(0x6714adc5a76F50c9deC4FbE672C7bdFb41828F88).participate(msg.sender, msg.value, token);
         
         emit Participation(msg.sender, msg.value, address(this), indexTier);
         return true;
@@ -148,14 +152,15 @@ contract Campaign is ICampaign, Context {
         require(block.timestamp < endTimestamp, "The campaign is finished");
         require(amount >= amounts[indexTier], "Amount is not correct");
         require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
+        
 
         // appeler ERC20 PAYMENT
+        PaymentHandler(0x3b26aBc627eE62a0C88167280A0d74b5656041bE).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
+        Reward(0x6714adc5a76F50c9deC4FbE672C7bdFb41828F88).participate(msg.sender, amount, token);
+
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
         }
-
-        PaymentHandler(0x6E48cEC04a7371D263E36Ef2282760E6cA267eE9).payInERC20(amount, msg.sender, address(this), token);   // changer par la bonne addresse une fois le contrat déployé
-        Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).participate(msg.sender, amount, token);
     
         emit Participation(msg.sender, amount, address(this), indexTier);
         return true;

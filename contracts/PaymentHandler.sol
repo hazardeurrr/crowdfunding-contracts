@@ -14,10 +14,20 @@ contract PaymentHandler is Context {
         owner = msg.sender;
     }
 
+    modifier onlyOwner() {
+        require(owner == _msgSender(), "You are not the Owner");
+        _;
+    }
+
     // **************************** //
     // *         Functions        * //
     // **************************** //
     
+    // to change the owner of the contract
+    function changeOwner(address newOwner) public onlyOwner() {
+        owner = newOwner;
+    } 
+
 
     function payInERC20(uint256 amount, address userAddr, address campaign, address token) payable public {
         IERC20(token).transferFrom(userAddr, campaign, amount);

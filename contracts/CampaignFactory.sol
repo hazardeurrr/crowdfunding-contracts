@@ -7,6 +7,7 @@ import "./ICampaignFactory.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 
 
 // When deploying & initilising
@@ -16,7 +17,7 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 // 4. Set the currencies wanted in the mapping as (index, address)
 
 
-contract CampaignFactory {
+contract CampaignFactory is Context{
     using SafeMath for uint;
 
     struct CampaignSaved {
@@ -32,7 +33,7 @@ contract CampaignFactory {
     address[]  public allCrowdFund;
     address public masterCampaignAddress;
     address public token;
-    address onwer;
+    address owner;
 
     uint256 public nbCampaign;
     uint public indexCurrencies;
@@ -53,10 +54,10 @@ contract CampaignFactory {
 
     constructor() {
         owner = msg.sender;
-        address usdc = address(0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b);
+        address usdc = address(0x2f3A40A3db8a7e3D09B0adfEfbCe4f6F81927557);
         setCurrencies(0, usdc);
         setCurrencies(1, 0x0000000000000000000000000000000000000000);
-        address bbst = address(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55);
+        address bbst = address(0x24600539D8Fa2D29C58366512d08EE082A6c0cB3);
         setCurrencies(2, bbst);
         nbCampaign = 0;
         indexCurrencies = 0;
@@ -101,7 +102,7 @@ contract CampaignFactory {
             address newCampaign = Clones.clone(masterCampaignAddress);
             
             address payable nA = payable(newCampaign);
-            Reward(0xea462Ef2A3c7f98129FEB2D21AE463109556D7dd).addToAllowed(nA);
+            Reward(0x6714adc5a76F50c9deC4FbE672C7bdFb41828F88).addToAllowed(nA);
             Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], amounts_, stock_);
             
             uint crCampaignNumber = creatorCampaignNumber[msg.sender];
@@ -115,6 +116,11 @@ contract CampaignFactory {
     // **************************** //
     // *         Functions        * //
     // **************************** //
+
+    // to change the owner of the contract
+    function changeOwner(address newOwner) public onlyOwner() {
+        owner = newOwner;
+    }
 
 
     function addToBlacklist(address newAddress) onlyOwner() public {
