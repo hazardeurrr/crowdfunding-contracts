@@ -51,6 +51,12 @@ contract Reward is Context {
 
     ////****functions****////
 
+    // to change the owner of the contract
+    function changeOwner(address newOwner) public onlyOwner() {
+        owner = newOwner;
+    } 
+
+
     function setActive(bool state) onlyOwner() external {
         active = state;
     }
@@ -77,61 +83,7 @@ contract Reward is Context {
         return true;
     }
 
-    function claimTokens(uint amount, bytes calldata signature) onlyWhenActive() external {
-
-        address recipient = msg.sender;
-        bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount, nbClaim[recipient])));
-
-        require(recoverSigner(message, signature) == admin, "CLAIM DENIED : WRONG SIGNATURE");
-
-        // BBST token address
-        lastClaim[recipient] = block.number;
-        nbClaim[recipient] += 1;
-        
-        IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
-
-        emit Claimed(recipient, amount, block.timestamp);
-    }
-
-    function prefixed(bytes32 hash) internal pure returns (bytes32) {
-
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-    }
-
-    function recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
-    
-        (v, r, s) = splitSignature(sig);
-    
-        return ecrecover(message, v, r, s);
-    }
-
-    function splitSignature(bytes memory sig) internal pure returns (uint8, bytes32, bytes32) {
-        require(sig.length == 65);
-    
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-    
-        assembly {
-            // first 32 bytes, after the length prefix
-            r := mload(add(sig, 32))
-            // second 32 bytes
-            s := mload(add(sig, 64))
-            // final byte (first byte of the next 32 bytes)
-            v := byte(0, mload(add(sig, 96)))
-        }
-    
-        return (v, r, s);
-    }
-
-    function getLastClaim(address claimer) public view returns(uint256) {
-        return lastClaim[claimer];
-    }
-
     function getBalance() onlyOwner() public view returns(uint256) {
-        return IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).balanceOf(address(this));
+        return IERC20(0x24600539D8Fa2D29C58366512d08EE082A6c0cB3).balanceOf(address(this));
     }
 }
