@@ -20,28 +20,18 @@ import "@openzeppelin/contracts/utils/Context.sol";
 contract CampaignFactory is Context{
     using SafeMath for uint;
 
-    struct CampaignSaved {
-        address campaignAddress;
-        uint id;
-    }
+    mapping(address => bool) public blacklist;  // blacklisted addresses
+    mapping(uint => address) public currencies; // mapping index => address of a currency's ERC20 contract (for ETH => maps to address(0))
 
-    mapping(address => bool) public blacklist;
-    mapping(address => uint) public creatorCampaignNumber;
-    mapping(address => CampaignSaved) public campaigns;
-    mapping(uint => address) public currencies;
+    address public masterCampaignAddress;      // Address of the "Campaign" Master contract deployed. We will clone that to create campaigns from this factory.
+    address owner;  // The owner of the contract
 
-    address[]  public allCrowdFund;
-    address public masterCampaignAddress;
-    address public token;
-    address owner;
+    uint256 public nbCampaign; // number of campaigns created with this factory
 
-    uint256 public nbCampaign;
-    uint public indexCurrencies;
+    // event emmitted at campaign creation
+    event CampaignCreated(address campaign, address creator, uint256 campaignId, address currency);
+
     
-    // TOKEN ADDRESSES
-
-    event CampaignCreated(address campaign, address creator, uint256 campaignId, uint goal);
-
     modifier isWhitelisted() {
         require(blacklist[msg.sender] == false, "You are not allowed to interract with the contract");
         _;
@@ -54,13 +44,16 @@ contract CampaignFactory is Context{
 
     constructor() {
         owner = msg.sender;
+
+        // set the available currencies with corresponding address. 0 = USDC / 1 = ETH / 2 = BBST
         address usdc = address(0x2f3A40A3db8a7e3D09B0adfEfbCe4f6F81927557);
         setCurrencies(0, usdc);
-        setCurrencies(1, 0x0000000000000000000000000000000000000000);
+        setCurrencies(1, address(0)); // set ETH with the 0 address
         address bbst = address(0x24600539D8Fa2D29C58366512d08EE082A6c0cB3);
         setCurrencies(2, bbst);
+
+        // initialize counters to 0
         nbCampaign = 0;
-        indexCurrencies = 0;
     }
 
     // Setting up the proxy
@@ -73,11 +66,6 @@ contract CampaignFactory is Context{
     // *       Currencies         * //
     // **************************** //
 
-    function getCurrencies(uint index) public view returns(address) {
-        require(index >= 0, "index must be positive");
-        return(currencies[index]);
-    }
-
     function setCurrencies(uint index, address currencyAddress) onlyOwner() public returns(bool) {
         require(index >= 0, "index must be positive");
         currencies[index] = currencyAddress;
@@ -88,27 +76,32 @@ contract CampaignFactory is Context{
     // *      Initialisation      * //
     // **************************** //
 
+    /* Function used to create a new campaign.
+    After basic checks on the inputs, create a new instance of Campaign (cloning the master) and initialize it with the parameters */
     function createCampaign(
-        uint goal_, 
+        uint goal_,
         uint startTimestamp_, 
         uint endTimestamp_,
-        uint tokenChoice,
+        uint tokenChoice,   // 0, 1 or 2 : will determine the currency used thanks to the "currencies" mapping
         uint256[] memory amounts_,
         int256[] memory stock_
         ) payable external isWhitelisted() returns(bool) {
-            require(msg.sender != address(0), "address not valid");
-            require(tokenChoice >= 0, "cannot be less than 0");
-            // Setting up the proxy
-            address newCampaign = Clones.clone(masterCampaignAddress);
+
+            // check if the chosen token index is for ETH (<=> 1), otherwise, check if the index has a corresponding address in the currencies mapping
+            require(tokenChoice == 1 || currencies[tokenChoice] != address(0), "Wrong currency index");
             
+            // Create a new Campaign instance
+            address newCampaign = Clones.clone(masterCampaignAddress);
             address payable nA = payable(newCampaign);
+
+            //Add the address of the newly created campaign to the allowed address on the Reward contract
             Reward(0x6714adc5a76F50c9deC4FbE672C7bdFb41828F88).addToAllowed(nA);
+            //Initialize the newly created campaign
             Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], amounts_, stock_);
             
-            uint crCampaignNumber = creatorCampaignNumber[msg.sender];
-            campaigns[msg.sender] = CampaignSaved(newCampaign, crCampaignNumber);
             nbCampaign += 1;
-            emit CampaignCreated(nA, msg.sender, nbCampaign, goal_);
+
+            emit CampaignCreated(nA, msg.sender, nbCampaign, currencies[tokenChoice]);
             return true;
     }
 
@@ -122,7 +115,6 @@ contract CampaignFactory is Context{
         owner = newOwner;
     }
 
-
     function addToBlacklist(address newAddress) onlyOwner() public {
         blacklist[newAddress] = true;
     }
@@ -130,9 +122,4 @@ contract CampaignFactory is Context{
     function removeFromBlacklist(address addressToRemove) onlyOwner() public {
         blacklist[addressToRemove] = false;
     }
-
-    function getCampaign(address creator) external view returns(CampaignSaved memory _campaign) {
-        return campaigns[creator];
-    }
-
 }
