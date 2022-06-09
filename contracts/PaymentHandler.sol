@@ -31,7 +31,7 @@ contract PaymentHandler is Context {
     // function handling payment in ERC20. Called when someones participate to a campaign in ERC20
     function payInERC20(uint256 amount, address userAddr, address campaign, address token) payable public {
         //checks the call comes from the "Campaign" instance
-        require(msg.sender == campaign);
+        require(msg.sender == campaign, "You are not allowed to call this function");
         IERC20(token).transferFrom(userAddr, campaign, amount);
     }
 
