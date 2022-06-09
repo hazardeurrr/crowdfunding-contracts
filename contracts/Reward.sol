@@ -6,17 +6,23 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract Reward is Context {
 
     address owner;
-    address admin;
-    address factory;
-    uint256 public rewardStartTimestamp;
+    address admin;  // public key, used to verify signature
+    address factory;    // address of the factory contract
+    uint256 public rewardStartTimestamp;    // timestamp of the beginning of the reward system
 
-    bool active;
+    bool active;    // is the reward system active or not
 
+    // event sent when a user donate to a campaign
     event Participate(address indexed user, uint timestamp, uint256 amount, address token);
+    // event sent when a user claims his rewards
     event Claimed(address claimer, uint256 amount, uint256 timestamp);
 
-    mapping(address => bool) allowed;
+    /*** addresses that are allowed to call some functions (i.e. : all the "Campaign" instances created by the factory)
+    to prevent someone from directly call the "participate" function in this contract without */
+    mapping(address => bool) allowed;   
+    // stores the timestamp of the last time a user claims his rewards.
     mapping(address => uint256) public lastClaim;
+    // stores the number of times a user has claimed his rewards. Acts as a nonce to prevent replay attacks.
     mapping(address => uint) public nbClaim;
 
     constructor (address _admin) {
@@ -49,7 +55,7 @@ contract Reward is Context {
         _;
     }
 
-    ////****functions****////
+    ////**** Setters ****////
 
     function setActive(bool state) onlyOwner() external {
         active = state;
@@ -71,21 +77,34 @@ contract Reward is Context {
         factory = factoryAddress;
     }
 
+    //**** Functions ****/
+
+    /***
+    * Function called from a "Campaign" instance when a user makes a donation.
+    * @param address sender : the user that made the donation, passed as argument.
+    */
     function participate(address sender, uint256 amount, address token) onlyAllowed() public returns(bool) {
         emit Participate(sender, block.timestamp, amount, token);
 
         return true;
     }
 
+
+    /***
+    * Function called when a user wants to claim its tokens.
+    * @param amount : the amount of BBST to be claimed (in wei)
+    * @param signature : the signature returned by our backend to approve this transaction. Returns an encoded message
+    * in format receiverAddress|amountToBeClaimed|nonce with a secret private key
+    */
     function claimTokens(uint amount, bytes calldata signature) onlyWhenActive() external {
 
         address recipient = msg.sender;
+        // rebuild the message receiver|amount|nonce and encode it
         bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount, nbClaim[recipient])));
-
+        // check if signature is correct
         require(recoverSigner(message, signature) == admin, "CLAIM DENIED : WRONG SIGNATURE");
 
-        // BBST token address
-        lastClaim[recipient] = block.number;
+        lastClaim[recipient] = block.timestamp;
         nbClaim[recipient] += 1;
         
         IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
@@ -93,10 +112,11 @@ contract Reward is Context {
         emit Claimed(recipient, amount, block.timestamp);
     }
 
-    function prefixed(bytes32 hash) internal pure returns (bytes32) {
 
+    function prefixed(bytes32 hash) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     }
+
 
     function recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
         uint8 v;
@@ -131,6 +151,7 @@ contract Reward is Context {
         return lastClaim[claimer];
     }
 
+    // returns the amount of BBST on this contract
     function getBalance() onlyOwner() public view returns(uint256) {
         return IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).balanceOf(address(this));
     }
