@@ -113,11 +113,19 @@ contract Reward is Context {
     }
 
 
+    /***
+    * Conventional semantic for signed messages using keccak256
+    */ 
     function prefixed(bytes32 hash) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     }
 
 
+    /***
+    * Using the message and the signature separately we recover the admin address
+    * @param message : the message from the user
+    * @param sig : the signature used to sign the message
+    */ 
     function recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
         uint8 v;
         bytes32 r;
@@ -128,6 +136,11 @@ contract Reward is Context {
         return ecrecover(message, v, r, s);
     }
 
+
+    /***
+    * Split the signature in 3 parts of 32 bytes in order to recover it using the message
+    * @param sig : the signature used to sign the message
+    */ 
     function splitSignature(bytes memory sig) internal pure returns (uint8, bytes32, bytes32) {
         require(sig.length == 65);
     
@@ -145,10 +158,6 @@ contract Reward is Context {
         }
     
         return (v, r, s);
-    }
-
-    function getLastClaim(address claimer) public view returns(uint256) {
-        return lastClaim[claimer];
     }
 
     // returns the amount of BBST on this contract
