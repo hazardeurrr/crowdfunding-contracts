@@ -177,4 +177,12 @@ contract Campaign is ICampaign, Context {
     receive() override external payable {
         // participateInETH();
     }
+
+    // **************************** //
+    // *   Internal Functions     * //
+    // **************************** //
+
+    function getStock() public view returns (int256[] memory) {
+        return stock;
+    }
 }

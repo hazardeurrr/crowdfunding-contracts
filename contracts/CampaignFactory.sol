@@ -1,7 +1,6 @@
 pragma solidity ^0.8.0;
 
 import "./Campaign.sol";
-import "./ICampaignFactory.sol";
 
 // Using @openzeppelin contracts for better auditing.
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
