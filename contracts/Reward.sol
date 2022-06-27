@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract Reward is Context {
 
     address owner;
-    address admin;  // public key, used to verify signature
     address factory;    // address of the factory contract
     uint256 public rewardStartTimestamp;    // timestamp of the beginning of the reward system
 
@@ -18,18 +17,31 @@ contract Reward is Context {
     event Claimed(address claimer, uint256 amount, uint256 timestamp);
 
     /*** addresses that are allowed to call some functions (i.e. : all the "Campaign" instances created by the factory)
-    to prevent someone from directly call the "participate" function in this contract without */
+    to prevent someone from directly call the "participate" function in this contract */
     mapping(address => bool) allowed;   
-    // stores the timestamp of the last time a user claims his rewards.
-    mapping(address => uint256) public lastClaim;
-    // stores the number of times a user has claimed his rewards. Acts as a nonce to prevent replay attacks.
-    mapping(address => uint) public nbClaim;
+    // // stores the timestamp of the last time a user claims his rewards.
+    // mapping(address => uint256) public lastClaim;
+    // // stores the number of times a user has claimed his rewards. Acts as a nonce to prevent replay attacks.
+    // mapping(address => uint) public nbClaim;
 
-    constructor (address _admin) {
+    mapping(address => mapping(uint => uint256)) public participations;
+    mapping(uint => uint256) public totalParticipations;
+    mapping(address => uint[]) public keys;
+
+    uint256 public weeklySupply;
+
+    uint tauxBBST = 125;
+    uint tauxBNB = 240;
+    uint tauxBUSD = 1;
+
+    uint delayClaim = 300;
+
+    constructor () {
         owner = msg.sender;
         rewardStartTimestamp = block.timestamp;
-        admin = _admin;
         active = true;
+        totalParticipations[0] = 0;
+        weeklySupply = 2500*10**18;
     }
 
 
@@ -46,7 +58,7 @@ contract Reward is Context {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "You are not the Factory");
+        require(msg.sender == owner, "You are not the Owner");
         _;
     }
 
@@ -65,16 +77,28 @@ contract Reward is Context {
         rewardStartTimestamp = time;
     }
 
-    function updateAdmin(address newAdmin) onlyOwner() external {
-        admin = newAdmin;
-    }
-
     function addToAllowed(address newAddress) onlyFactory() public {
         allowed[newAddress] = true;
     }
 
-    function setFactory(address factoryAddress) onlyOwner() public{
+    function setFactory(address factoryAddress) onlyOwner() public {
         factory = factoryAddress;
+    }
+
+    function setBalanceWeek(uint256 newBalance) external onlyOwner() {
+        weeklySupply = newBalance;
+    }
+
+    function setTauxBBST(uint newTaux) external onlyOwner() {
+        tauxBBST = newTaux;
+    }
+
+    function setTauxBUSD(uint newTaux) external onlyOwner() {
+        tauxBUSD = newTaux;
+    }
+
+    function setTauxBNB(uint newTaux) external onlyOwner() {
+        tauxBNB = newTaux;
     }
 
     //**** Functions ****/
@@ -84,84 +108,100 @@ contract Reward is Context {
     * @param address sender : the user that made the donation, passed as argument.
     */
     function participate(address sender, uint256 amount, address token) onlyAllowed() public returns(bool) {
-        emit Participate(sender, block.timestamp, amount, token);
 
+        uint256 amount_ = amount;
+        uint week = (block.timestamp - rewardStartTimestamp) / delayClaim;
+
+        if (token == address(0xeD24FC36d5Ee211Ea25A80239Fb8C4Cfd80f12Ee)) {
+            amount_ = amount_ * tauxBUSD;
+        } else if (token == address(0x0000000000000000000000000000000000000000)) {
+            amount_ = amount_ * tauxBNB;
+        } else if (token == address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688)) {
+            amount_ = (amount_ * tauxBBST) / 100;
+        } else {
+            revert("Wrong token address provided.");
+        }
+        
+        if(participations[sender][week] == 0 || keys[sender].length == 0) {
+            keys[sender].push(week);
+        }
+
+        participations[sender][week] += amount_;
+        totalParticipations[week] += amount_;
+        
+        amount_ = 0;
+
+        emit Participate(sender, block.timestamp, amount, token);
         return true;
+    }
+
+
+    function percent(uint256 numerator, uint256 denominator, uint precision) public pure returns(uint256 quotient) {
+        // caution, check safe-to-multiply here
+        uint256 _numerator  = numerator * 10 ** (precision+1);
+        // with rounding of last digit
+        uint256 _quotient =  ((_numerator / denominator) + 5) / 10;
+        return ( _quotient);
+    }
+
+
+    function getClaim(address claimer) public view returns(uint256) {
+        uint256 toClaim = 0;
+
+        for (uint i = 0; i < keys[claimer].length; i++) {
+            uint week = keys[claimer][i];
+            uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 7);
+            uint256 gains = ratio > 3*10**5 ? percent(3*10**5 * weeklySupply,1*10**7,0) : percent(ratio * weeklySupply,1*10**7,0);
+            toClaim += gains;
+        }
+
+        return toClaim;
     }
 
 
     /***
     * Function called when a user wants to claim its tokens.
-    * @param amount : the amount of BBST to be claimed (in wei)
-    * @param signature : the signature returned by our backend to approve this transaction. Returns an encoded message
-    * in format receiverAddress|amountToBeClaimed|nonce with a secret private key
     */
-    function claimTokens(uint amount, bytes calldata signature) onlyWhenActive() external {
+    function claimTokens() onlyWhenActive() external {
 
-        address recipient = msg.sender;
-        // rebuild the message receiver|amount|nonce and encode it
-        bytes32 message = prefixed(keccak256(abi.encodePacked(recipient, amount, nbClaim[recipient])));
-        // check if signature is correct
-        require(recoverSigner(message, signature) == admin, "CLAIM DENIED : WRONG SIGNATURE");
+        require(((block.timestamp - rewardStartTimestamp) / delayClaim) > 0, "You cannot retrieve your tokens yet!");
 
-        lastClaim[recipient] = block.timestamp;
-        nbClaim[recipient] += 1;
-        
-        IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).transfer(recipient, amount);
+        uint256 toClaim = 0;
+        address bbst = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688);
 
-        emit Claimed(recipient, amount, block.timestamp);
-    }
+        uint currentWeek = ((block.timestamp - rewardStartTimestamp) / delayClaim);
+        uint elemCurrentWeek = 0;
 
-
-    /***
-    * Conventional semantic for signed messages using keccak256
-    */ 
-    function prefixed(bytes32 hash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-    }
-
-
-    /***
-    * Using the message and the signature separately we recover the admin address
-    * @param message : the message from the user
-    * @param sig : the signature used to sign the message
-    */ 
-    function recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
-    
-        (v, r, s) = splitSignature(sig);
-    
-        return ecrecover(message, v, r, s);
-    }
-
-
-    /***
-    * Split the signature in 3 parts of 32 bytes in order to recover it using the message
-    * @param sig : the signature used to sign the message
-    */ 
-    function splitSignature(bytes memory sig) internal pure returns (uint8, bytes32, bytes32) {
-        require(sig.length == 65);
-    
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-    
-        assembly {
-            // first 32 bytes, after the length prefix
-            r := mload(add(sig, 32))
-            // second 32 bytes
-            s := mload(add(sig, 64))
-            // final byte (first byte of the next 32 bytes)
-            v := byte(0, mload(add(sig, 96)))
+        for (uint i = 0; i < keys[msg.sender].length; i++) {
+            if (keys[msg.sender][i] == currentWeek) {
+                elemCurrentWeek = keys[msg.sender][i];
+            } else {
+                uint week = keys[msg.sender][i];
+                uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 7);
+                uint256 gains = ratio > 3*10**5 ? percent(3*10**5 * weeklySupply,1*10**7,0) : percent(ratio * weeklySupply,1*10**7,0);
+                toClaim += gains;
+            }
         }
-    
-        return (v, r, s);
+
+        if (elemCurrentWeek == 0) {
+            delete keys[msg.sender];
+        } else {
+            delete keys[msg.sender];
+            keys[msg.sender].push(elemCurrentWeek);
+        }
+
+        IERC20(bbst).transfer(msg.sender, toClaim);
+
+        emit Claimed(msg.sender, toClaim, block.timestamp);
     }
+
 
     // returns the amount of BBST on this contract
     function getBalance() onlyOwner() public view returns(uint256) {
-        return IERC20(0x67c0fd5c30C39d80A7Af17409eD8074734eDAE55).balanceOf(address(this));
+        return IERC20(0xa6F6F46384FD07f82A7756C48fFf7f0193108688).balanceOf(address(this));
+    }
+
+    function getCurrrentWeek() public view returns(uint) {
+        return (block.timestamp - rewardStartTimestamp) / delayClaim;
     }
 }
