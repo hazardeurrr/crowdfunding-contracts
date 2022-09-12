@@ -20,7 +20,7 @@ contract Campaign is ICampaign, Context {
     address payable public creator;
     address public campaign_address;
     address private token;  // address of the token used as currency (or address(0) if ETH is used)
-
+    address BBSTAddr = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688); // Address of the BBST Token
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -53,6 +53,14 @@ contract Campaign is ICampaign, Context {
     modifier onlyCreator() {
         require(creator == _msgSender(), "You are not the Creator of the campaign");
         _;
+    }
+
+    // **************************** //
+    // *         Setters          * //
+    // **************************** //
+
+    function setBBSTAddr(address addr) external onlyOwner() {
+        BBSTAddr = address(addr);
     }
 
 
@@ -116,7 +124,7 @@ contract Campaign is ICampaign, Context {
         require(block.timestamp > endTimestamp, "The campaign has not ended yet");
         require(IERC20(token).balanceOf(address(this)) > 0, "Contract balance cannot be empty");
 
-        address bbstAddress = address(0x24600539D8Fa2D29C58366512d08EE082A6c0cB3);
+        address bbstAddress = BBSTAddr;
 
         uint256 totalBalance = IERC20(token).balanceOf(address(this));
         raised = totalBalance;

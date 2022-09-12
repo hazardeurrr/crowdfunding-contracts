@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract Reward is Context {
 
     address owner;
+    address BBSTAddr = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688);  // address of the BBST Token
     address factory;    // address of the factory contract
     uint256 public rewardStartTimestamp;    // timestamp of the beginning of the reward system
 
@@ -37,12 +38,12 @@ contract Reward is Context {
     uint tauxBNB = 240;
     uint tauxBUSD = 1;
 
-    uint delayClaim = 300;
+    uint delayClaim = 86400;
 
     constructor () {
         owner = msg.sender;
         rewardStartTimestamp = block.timestamp;
-        active = true;
+        active = false;
         totalParticipations[0] = 0;
         weeklySupply[0] = 2500;
         weeklySupply[1] = 5000;
@@ -91,7 +92,7 @@ contract Reward is Context {
         factory = factoryAddress;
     }
 
-    function setBalanceWeek(uint256 index, uint256 newBalance) external onlyOwner() {
+    function setWeeklySupply(uint256 index, uint256 newBalance) external onlyOwner() {
         weeklySupply[index] = newBalance;
     }
 
@@ -115,28 +116,32 @@ contract Reward is Context {
         supplySuperWeek = newSupplySuperWeek;
     }
 
+    function setBBSTAddr(address addr) external onlyOwner() {
+        BBSTAddr = address(addr);
+    }
+
     //**** Functions ****/
 
-    function getWeeklySupply(uint week) internal view returns(uint256 supply) {
+    function getSupply(uint week) internal view returns(uint256 supply) {
         
         if (superWeek == week) {
-            supply = supplySuperWeek;
+            supply = supplySuperWeek * 10**18;
         }
 
         if (week < 3) {
-            supply = weeklySupply[0];
+            supply = weeklySupply[0] * 10**18;
         }
 
         if (week >= 3 && week < 6) {
-            supply = weeklySupply[1];
+            supply = weeklySupply[1] * 10**18;
         }
 
         if (week >= 6 && week < 9) {
-            supply = weeklySupply[2];
+            supply = weeklySupply[2] * 10**18;
         }
 
         if (week >= 9) {
-            supply = weeklySupply[3];
+            supply = weeklySupply[3] * 10**18;
         }
 
         return supply;
@@ -156,7 +161,7 @@ contract Reward is Context {
             amount_ = amount_ * tauxBUSD;
         } else if (token == address(0x0000000000000000000000000000000000000000)) {
             amount_ = amount_ * tauxBNB;
-        } else if (token == address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688)) {
+        } else if (token == BBSTAddr) {
             amount_ = (amount_ * tauxBBST) / 100;
         } else {
             revert("Wrong token address provided.");
@@ -195,7 +200,7 @@ contract Reward is Context {
             if (week == currentWeek) {
                 toClaim += 0;
             } else {
-                uint256 supply = getWeeklySupply(week);
+                uint256 supply = getSupply(week);
                 uint256 ratio = percent(participations[claimer][week], totalParticipations[week], 7);
                 uint256 gains = ratio > 3*10**5 ? percent(3*10**5 * supply,1*10**7,0) : percent(ratio * supply,1*10**7,0);
                 toClaim += gains;
@@ -214,7 +219,7 @@ contract Reward is Context {
         require(((block.timestamp - rewardStartTimestamp) / delayClaim) > 0, "You cannot retrieve your tokens yet!");
 
         uint256 toClaim = 0;
-        address bbst = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688);
+        address bbst = BBSTAddr;
 
         uint currentWeek = ((block.timestamp - rewardStartTimestamp) / delayClaim);
         uint elemCurrentWeek = 0;
@@ -224,7 +229,7 @@ contract Reward is Context {
                 elemCurrentWeek = keys[msg.sender][i];
             } else {
                 uint week = keys[msg.sender][i];
-                uint256 supply = getWeeklySupply(week);
+                uint256 supply = getSupply(week);
                 uint256 ratio = percent(participations[msg.sender][week], totalParticipations[week], 7);
                 uint256 gains = ratio > 3*10**5 ? percent(3*10**5 * supply,1*10**7,0) : percent(ratio * supply,1*10**7,0);
                 toClaim += gains;
@@ -246,7 +251,7 @@ contract Reward is Context {
 
     // returns the amount of BBST on this contract
     function getBalance() onlyOwner() public view returns(uint256) {
-        return IERC20(0xa6F6F46384FD07f82A7756C48fFf7f0193108688).balanceOf(address(this));
+        return IERC20(BBSTAddr).balanceOf(address(this));
     }
 
     function getCurrrentWeek() public view returns(uint) {
@@ -254,7 +259,7 @@ contract Reward is Context {
     }
 
     function retrieveRewards() external onlyOwner() {
-        address bbst = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688);
+        address bbst = BBSTAddr;
         uint256 amountLeft = getBalance();
 
         IERC20(bbst).transfer(owner, amountLeft);

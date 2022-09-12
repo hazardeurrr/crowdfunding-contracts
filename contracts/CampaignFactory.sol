@@ -24,6 +24,7 @@ contract CampaignFactory is Context{
 
     address public masterCampaignAddress;      // Address of the "Campaign" Master contract deployed. We will clone that to create campaigns from this factory.
     address owner;  // The owner of the contract
+    address BBSTAddr = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688); // Address of the BBST Token
 
     uint256 public nbCampaign; // number of campaigns created with this factory
 
@@ -48,8 +49,9 @@ contract CampaignFactory is Context{
         address usdc = address(0x2f3A40A3db8a7e3D09B0adfEfbCe4f6F81927557);
         setCurrencies(0, usdc);
         setCurrencies(1, address(0)); // set ETH with the 0 address
-        address bbst = address(0x24600539D8Fa2D29C58366512d08EE082A6c0cB3);
-        setCurrencies(2, bbst);
+        // POUR LA V1 PAS UTILE VARIABLE BBST DISPO
+        // address bbst = address(0x24600539D8Fa2D29C58366512d08EE082A6c0cB3);
+        // setCurrencies(2, bbst);
 
         // initialize counters to 0
         nbCampaign = 0;
@@ -59,6 +61,11 @@ contract CampaignFactory is Context{
     function setMasterCampaignAddress(address newAddress) onlyOwner() public returns(address) {
         masterCampaignAddress = newAddress;
         return(masterCampaignAddress);
+    }
+
+    // Setting BBST Token Address
+    function setBBSTAddr(address addr) external onlyOwner() {
+        BBSTAddr = address(addr);
     }
 
     // **************************** //
