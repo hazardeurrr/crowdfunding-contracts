@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract Reward is Context {
 
     address owner;
-    address BBSTAddr = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688);  // address of the BBST Token
+    address BBSTAddr = address(0x000000000000000000000000000000000000dEaD);  // address of the BBST Token
     address factory;    // address of the factory contract
     uint256 public rewardStartTimestamp;    // timestamp of the beginning of the reward system
 
@@ -38,7 +38,7 @@ contract Reward is Context {
     uint tauxBNB = 240;
     uint tauxBUSD = 1;
 
-    uint delayClaim = 86400;
+    uint delayClaim = 3600;
 
     constructor () {
         owner = msg.sender;

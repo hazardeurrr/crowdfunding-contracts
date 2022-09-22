@@ -19,12 +19,15 @@ contract Campaign is ICampaign, Context {
     uint256 public raised;
     address payable public creator;
     address public campaign_address;
-    address private token;  // address of the token used as currency (or address(0) if ETH is used)
-    address BBSTAddr = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688); // Address of the BBST Token
+    address public token;  // address of the token used as currency (or address(0) if ETH/BNB is used)
+    address public BBSTAddr = address(0x000000000000000000000000000000000000dEaD); // Address of the BBST Token
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
     uint public endTimestamp;
+
+    // Starting block of the campaign
+    uint public creationBlock;
 
     // Array representing the minimum value required for each tier
     uint256[] public amounts;
@@ -34,6 +37,7 @@ contract Campaign is ICampaign, Context {
 
     constructor() {
         owner = msg.sender;
+        creationBlock = block.number;
     }
 
     // **************************** //
@@ -46,7 +50,7 @@ contract Campaign is ICampaign, Context {
     }
     
     modifier onlyFactory() {
-        require(0x45593C5Ebe4477275703F204DCDd1019E3408Bf3 == _msgSender(), "You are not the Factory");
+        require(0x49437Ec2ab67bC08dFf6d46ef51EDd7d134EdFE0 == _msgSender(), "You are not the Factory");
         _;
     }
     
@@ -153,7 +157,7 @@ contract Campaign is ICampaign, Context {
             stock[indexTier] = stock[indexTier] - 1;
         }  
         //Call the participated function of the Reward contract
-        Reward(0x6714adc5a76F50c9deC4FbE672C7bdFb41828F88).participate(msg.sender, msg.value, token);
+        Reward(0x77bD27b96635853E21C9Dfbf922b671eD914e44B).participate(msg.sender, msg.value, token);
         
         emit Participation(msg.sender, msg.value, address(this), indexTier);
         return true;
@@ -169,8 +173,8 @@ contract Campaign is ICampaign, Context {
         
 
         //Calls PaymentHandler with the corresponding data. We delegate the process to this contract to prevent multiple allowance checks
-        PaymentHandler(0x3b26aBc627eE62a0C88167280A0d74b5656041bE).payInERC20(amount, msg.sender, address(this), token);
-        Reward(0x6714adc5a76F50c9deC4FbE672C7bdFb41828F88).participate(msg.sender, amount, token);
+        PaymentHandler(0x031865572E39441a58e7C7423EC52E3DbFb1E555).payInERC20(amount, msg.sender, address(this), token);
+        Reward(0x77bD27b96635853E21C9Dfbf922b671eD914e44B).participate(msg.sender, amount, token);
 
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;

@@ -16,22 +16,21 @@ import "@openzeppelin/contracts/utils/Context.sol";
 // 4. Set the currencies wanted in the mapping as (index, address)
 
 
-contract CampaignFactory is Context{
+contract CampaignFactory is Context {
     using SafeMath for uint;
+
+    // event emmitted at campaign creation
+    event CampaignCreated(address campaign, address creator, uint256 campaignId, address currency);
 
     mapping(address => bool) public blacklist;  // blacklisted addresses
     mapping(uint => address) public currencies; // mapping index => address of a currency's ERC20 contract (for ETH => maps to address(0))
 
     address public masterCampaignAddress;      // Address of the "Campaign" Master contract deployed. We will clone that to create campaigns from this factory.
     address owner;  // The owner of the contract
-    address BBSTAddr = address(0xa6F6F46384FD07f82A7756C48fFf7f0193108688); // Address of the BBST Token
+    address public BBSTAddr = address(0x000000000000000000000000000000000000dEaD); // Address of the BBST Token
 
     uint256 public nbCampaign; // number of campaigns created with this factory
 
-    // event emmitted at campaign creation
-    event CampaignCreated(address campaign, address creator, uint256 campaignId, address currency);
-
-    
     modifier isWhitelisted() {
         require(blacklist[msg.sender] == false, "You are not allowed to interract with the contract");
         _;
@@ -45,10 +44,10 @@ contract CampaignFactory is Context{
     constructor() {
         owner = msg.sender;
 
-        // set the available currencies with corresponding address. 0 = USDC / 1 = ETH / 2 = BBST
-        address usdc = address(0x2f3A40A3db8a7e3D09B0adfEfbCe4f6F81927557);
-        setCurrencies(0, usdc);
-        setCurrencies(1, address(0)); // set ETH with the 0 address
+        // set the available currencies with corresponding address. 0 = BUSD / 1 = BNB / 2 = BBST
+        address busd = address(0xeD24FC36d5Ee211Ea25A80239Fb8C4Cfd80f12Ee);
+        setCurrencies(0, busd);
+        setCurrencies(1, address(0)); // set ETH/BNB with the 0 address
         // POUR LA V1 PAS UTILE VARIABLE BBST DISPO
         // address bbst = address(0x24600539D8Fa2D29C58366512d08EE082A6c0cB3);
         // setCurrencies(2, bbst);
@@ -93,7 +92,7 @@ contract CampaignFactory is Context{
         int256[] memory stock_
         ) payable external isWhitelisted() returns(bool) {
 
-            // check if the chosen token index is for ETH (<=> 1), otherwise, check if the index has a corresponding address in the currencies mapping
+            // check if the chosen token index is for BNB (<=> 1), otherwise, check if the index has a corresponding address in the currencies mapping
             require(tokenChoice == 1 || currencies[tokenChoice] != address(0), "Wrong currency index");
             
             // Create a new Campaign instance
@@ -101,7 +100,7 @@ contract CampaignFactory is Context{
             address payable nA = payable(newCampaign);
 
             //Add the address of the newly created campaign to the allowed address on the Reward contract
-            Reward(0x6714adc5a76F50c9deC4FbE672C7bdFb41828F88).addToAllowed(nA);
+            Reward(0x77bD27b96635853E21C9Dfbf922b671eD914e44B).addToAllowed(nA);
             //Initialize the newly created campaign
             Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], amounts_, stock_);
             
