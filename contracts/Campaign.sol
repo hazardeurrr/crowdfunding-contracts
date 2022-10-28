@@ -21,6 +21,7 @@ contract Campaign is ICampaign, Context {
     address public campaign_address;
     address public token;  // address of the token used as currency (or address(0) if ETH/BNB is used)
     address public BBSTAddr = address(0x000000000000000000000000000000000000dEaD); // Address of the BBST Token
+    address payable public feesAddress = payable(0xdf823e818D0b16e643A5E182034a24905d38491f); // fees Address
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -65,6 +66,10 @@ contract Campaign is ICampaign, Context {
 
     function setBBSTAddr(address addr) external onlyOwner() {
         BBSTAddr = address(addr);
+    }
+
+    function setFeesAddress(address payable addr) external onlyOwner() {
+        feesAddress = payable(addr);
     }
 
 
@@ -116,7 +121,7 @@ contract Campaign is ICampaign, Context {
         uint256 feeAmt =  (address(this).balance * 25) / 1000;
         uint256 totalForCreator =  address(this).balance - feeAmt;
         //Transfer fees to our address
-        payable(0xdf823e818D0b16e643A5E182034a24905d38491f).transfer(feeAmt);
+        feesAddress.transfer(feeAmt);
         //Transfer the rest to the creator
         creator.transfer(totalForCreator);
         
@@ -139,7 +144,7 @@ contract Campaign is ICampaign, Context {
         } else {
           uint256 feeAmt = (totalBalance * 25) / 1000;
             uint256 totalForCreator = totalBalance - feeAmt;
-            IERC20(token).transfer(payable(0xdf823e818D0b16e643A5E182034a24905d38491f), feeAmt);
+            IERC20(token).transfer(feesAddress, feeAmt);
             IERC20(token).transfer(creator, totalForCreator);
         }
         
