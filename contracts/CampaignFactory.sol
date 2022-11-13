@@ -31,6 +31,8 @@ contract CampaignFactory is Context {
 
     uint256 public nbCampaign; // number of campaigns created with this factory
 
+    bool feesActive = false;
+
     modifier isWhitelisted() {
         require(blacklist[msg.sender] == false, "You are not allowed to interract with the contract");
         _;
@@ -67,6 +69,11 @@ contract CampaignFactory is Context {
         BBSTAddr = address(addr);
     }
 
+    // setting the status of the fees (active or not)
+    function setFeesActive(bool active) external onlyOwner() {
+        feesActive = active;
+    }
+
     // **************************** //
     // *       Currencies         * //
     // **************************** //
@@ -100,9 +107,9 @@ contract CampaignFactory is Context {
             address payable nA = payable(newCampaign);
 
             //Add the address of the newly created campaign to the allowed address on the Reward contract
-            Reward(0x77bD27b96635853E21C9Dfbf922b671eD914e44B).addToAllowed(nA);
+            Reward(0xe9Dd017ac8B1F5c3603AA182d038cfD660F6056f).addToAllowed(nA);
             //Initialize the newly created campaign
-            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], amounts_, stock_);
+            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], address(BBSTAddr), feesActive, amounts_, stock_);
             
             nbCampaign += 1;
 

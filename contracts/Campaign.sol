@@ -21,7 +21,8 @@ contract Campaign is ICampaign, Context {
     address public campaign_address;
     address public token;  // address of the token used as currency (or address(0) if ETH/BNB is used)
     address public BBSTAddr = address(0x000000000000000000000000000000000000dEaD); // Address of the BBST Token
-    address payable public feesAddress = payable(0x0eEB242203a61b57d57eb8d3f9E3ce766B4dA69C); // fees Address
+    address payable public feesAddress = payable(0xdf823e818D0b16e643A5E182034a24905d38491f); // fees Address
+    bool public feesActive = false; // if fees are active or not
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
@@ -38,7 +39,6 @@ contract Campaign is ICampaign, Context {
 
     constructor() {
         owner = msg.sender;
-        creationBlock = block.number;
     }
 
     // **************************** //
@@ -51,7 +51,7 @@ contract Campaign is ICampaign, Context {
     }
     
     modifier onlyFactory() {
-        require(0x49437Ec2ab67bC08dFf6d46ef51EDd7d134EdFE0 == _msgSender(), "You are not the Factory");
+        require(0xf5a77660a9786B3EFFda0808f8c76b41746914d0 == _msgSender(), "You are not the Factory");
         _;
     }
     
@@ -72,6 +72,10 @@ contract Campaign is ICampaign, Context {
         feesAddress = payable(addr);
     }
 
+    function setFeesActive(bool active) external onlyOwner() {
+        feesActive = active;
+    }
+
 
     // **************************** //
     // *         Functions        * //
@@ -86,6 +90,8 @@ contract Campaign is ICampaign, Context {
         uint startTimestamp_,
         uint endTimestamp_, 
         address token_,
+        address bbstAdr_,
+        bool feesActive_,
         uint256[] memory amounts_,
         int256[] memory stock_
         ) onlyFactory() override external {
@@ -99,6 +105,9 @@ contract Campaign is ICampaign, Context {
             stock = stock_;
             token = token_;
             campaign_address = address(this);
+            creationBlock = block.number;
+            BBSTAddr = bbstAdr_;
+            feesActive = feesActive_;
             
             emit CampaignCreation(address(this), creator, block.timestamp, goal, token);
     }
@@ -117,15 +126,22 @@ contract Campaign is ICampaign, Context {
         //To keep track of the total amount raised, we store it in a new field before processing the transfer. It will be used on our UI only.
         raised = address(this).balance;
 
-        //fees : we take 2.5% of the total balance
-        uint256 feeAmt =  (address(this).balance * 25) / 1000;
-        uint256 totalForCreator =  address(this).balance - feeAmt;
-        //Transfer fees to our address
-        feesAddress.transfer(feeAmt);
-        //Transfer the rest to the creator
-        creator.transfer(totalForCreator);
-        
-        emit CreatorPaid(msg.sender, totalForCreator);
+        uint256 totalBalance = address(this).balance;
+
+        if (feesActive == false) {
+            creator.transfer(totalBalance);
+            emit CreatorPaid(msg.sender, totalBalance);
+        } else {
+            //fees : we take 3.5% of the total balance
+            uint256 feeAmt =  (totalBalance * 35) / 1000;
+            uint256 totalForCreator =  totalBalance - feeAmt;
+            //Transfer fees to our address
+            payable(0xdf823e818D0b16e643A5E182034a24905d38491f).transfer(feeAmt);
+            //Transfer the rest to the creator
+            creator.transfer(totalForCreator);
+            emit CreatorPaid(msg.sender, totalForCreator);
+        }
+
     }
 
     //Same function, but for campaigns using ERC20
@@ -139,16 +155,17 @@ contract Campaign is ICampaign, Context {
         raised = totalBalance;
 
         // If the currency used is BBST, we don't charge any fee
-        if(token == bbstAddress){
+        if(token == bbstAddress || feesActive == false){
             IERC20(token).transfer(creator, totalBalance);
+            emit CreatorPaid(msg.sender, totalBalance);
         } else {
-          uint256 feeAmt = (totalBalance * 25) / 1000;
+          uint256 feeAmt = (totalBalance * 35) / 1000;
             uint256 totalForCreator = totalBalance - feeAmt;
-            IERC20(token).transfer(feesAddress, feeAmt);
+            IERC20(token).transfer(payable(0xdf823e818D0b16e643A5E182034a24905d38491f), feeAmt);
             IERC20(token).transfer(creator, totalForCreator);
+            emit CreatorPaid(msg.sender, totalForCreator);
         }
         
-        emit CreatorPaid(msg.sender, totalBalance);
     }
 
     //Function called to donate to a campaign in ETH
@@ -162,7 +179,7 @@ contract Campaign is ICampaign, Context {
             stock[indexTier] = stock[indexTier] - 1;
         }  
         //Call the participated function of the Reward contract
-        Reward(0x77bD27b96635853E21C9Dfbf922b671eD914e44B).participate(msg.sender, msg.value, token);
+        Reward(0xe9Dd017ac8B1F5c3603AA182d038cfD660F6056f).participate(msg.sender, msg.value, token);
         
         emit Participation(msg.sender, msg.value, address(this), indexTier);
         return true;
@@ -179,7 +196,7 @@ contract Campaign is ICampaign, Context {
 
         //Calls PaymentHandler with the corresponding data. We delegate the process to this contract to prevent multiple allowance checks
         PaymentHandler(0x031865572E39441a58e7C7423EC52E3DbFb1E555).payInERC20(amount, msg.sender, address(this), token);
-        Reward(0x77bD27b96635853E21C9Dfbf922b671eD914e44B).participate(msg.sender, amount, token);
+        Reward(0xe9Dd017ac8B1F5c3603AA182d038cfD660F6056f).participate(msg.sender, amount, token);
 
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;
@@ -196,7 +213,7 @@ contract Campaign is ICampaign, Context {
     }
 
     // **************************** //
-    // *   Internal Functions     * //
+    // *         GETTERS          * //
     // **************************** //
 
     function getStock() public view returns (int256[] memory) {
