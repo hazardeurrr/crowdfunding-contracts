@@ -51,7 +51,7 @@ contract Campaign is ICampaign, Context {
     }
     
     modifier onlyFactory() {
-        require(0xf5a77660a9786B3EFFda0808f8c76b41746914d0 == _msgSender(), "You are not the Factory");
+        require(0xb1e8cd0C5e49D735Cb59F938087A71C0248D7010 == _msgSender(), "You are not the Factory");
         _;
     }
     
@@ -179,7 +179,7 @@ contract Campaign is ICampaign, Context {
             stock[indexTier] = stock[indexTier] - 1;
         }  
         //Call the participated function of the Reward contract
-        Reward(0xe9Dd017ac8B1F5c3603AA182d038cfD660F6056f).participate(msg.sender, msg.value, token);
+        Reward(0xF83f40fcbC9F06BdC3085cD6805659D98B042a82).participate(msg.sender, msg.value, token);
         
         emit Participation(msg.sender, msg.value, address(this), indexTier);
         return true;
@@ -195,8 +195,8 @@ contract Campaign is ICampaign, Context {
         
 
         //Calls PaymentHandler with the corresponding data. We delegate the process to this contract to prevent multiple allowance checks
-        PaymentHandler(0x031865572E39441a58e7C7423EC52E3DbFb1E555).payInERC20(amount, msg.sender, address(this), token);
-        Reward(0xe9Dd017ac8B1F5c3603AA182d038cfD660F6056f).participate(msg.sender, amount, token);
+        PaymentHandler(0x8BdCf141A050078E528afC6a095Db409C90948B1).payInERC20(amount, msg.sender, address(this), token);
+        Reward(0xF83f40fcbC9F06BdC3085cD6805659D98B042a82).participate(msg.sender, amount, token);
 
         if(stock[indexTier] != -1){
             stock[indexTier] = stock[indexTier] - 1;

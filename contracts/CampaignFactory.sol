@@ -107,7 +107,7 @@ contract CampaignFactory is Context {
             address payable nA = payable(newCampaign);
 
             //Add the address of the newly created campaign to the allowed address on the Reward contract
-            Reward(0xe9Dd017ac8B1F5c3603AA182d038cfD660F6056f).addToAllowed(nA);
+            Reward(0xF83f40fcbC9F06BdC3085cD6805659D98B042a82).addToAllowed(nA);
             //Initialize the newly created campaign
             Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], address(BBSTAddr), feesActive, amounts_, stock_);
             
