@@ -157,7 +157,7 @@ contract Reward is Context {
         uint256 amount_ = amount;
         uint week = (block.timestamp - rewardStartTimestamp) / delayClaim;
 
-        if (token == address(0xeD24FC36d5Ee211Ea25A80239Fb8C4Cfd80f12Ee)) {
+        if (token == address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56)) {
             amount_ = amount_ * tauxBUSD;
         } else if (token == address(0x0000000000000000000000000000000000000000)) {
             amount_ = amount_ * tauxBNB;
