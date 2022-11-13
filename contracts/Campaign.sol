@@ -61,23 +61,6 @@ contract Campaign is ICampaign, Context {
     }
 
     // **************************** //
-    // *         Setters          * //
-    // **************************** //
-
-    function setBBSTAddr(address addr) external onlyOwner() {
-        BBSTAddr = address(addr);
-    }
-
-    function setFeesAddress(address payable addr) external onlyOwner() {
-        feesAddress = payable(addr);
-    }
-
-    function setFeesActive(bool active) external onlyOwner() {
-        feesActive = active;
-    }
-
-
-    // **************************** //
     // *         Functions        * //
     // **************************** //
 
@@ -91,6 +74,7 @@ contract Campaign is ICampaign, Context {
         uint endTimestamp_, 
         address token_,
         address bbstAdr_,
+        address feesAddr_,
         bool feesActive_,
         uint256[] memory amounts_,
         int256[] memory stock_
@@ -107,6 +91,7 @@ contract Campaign is ICampaign, Context {
             campaign_address = address(this);
             creationBlock = block.number;
             BBSTAddr = bbstAdr_;
+            feesAddress = payable(feesAddr_);
             feesActive = feesActive_;
             
             emit CampaignCreation(address(this), creator, block.timestamp, goal, token);

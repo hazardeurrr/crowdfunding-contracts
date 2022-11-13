@@ -12,6 +12,7 @@ interface ICampaign {
         uint endTimestamp_,
         address token_,
         address bbstAddr_,
+        address feesAddr_,
         bool feesActive,
         uint256[] memory amounts_,
         int256[] memory stock_

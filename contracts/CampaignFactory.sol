@@ -28,6 +28,7 @@ contract CampaignFactory is Context {
     address public masterCampaignAddress;      // Address of the "Campaign" Master contract deployed. We will clone that to create campaigns from this factory.
     address owner;  // The owner of the contract
     address public BBSTAddr = address(0x000000000000000000000000000000000000dEaD); // Address of the BBST Token
+    address payable public feesAddress = payable(0xdf823e818D0b16e643A5E182034a24905d38491f); // fees Address
 
     uint256 public nbCampaign; // number of campaigns created with this factory
 
@@ -67,6 +68,11 @@ contract CampaignFactory is Context {
     // Setting BBST Token Address
     function setBBSTAddr(address addr) external onlyOwner() {
         BBSTAddr = address(addr);
+    }
+
+    // setting up Fees Address
+    function setFeesAddress(address payable addr) external onlyOwner() {
+        feesAddress = payable(addr);
     }
 
     // setting the status of the fees (active or not)
@@ -109,7 +115,7 @@ contract CampaignFactory is Context {
             //Add the address of the newly created campaign to the allowed address on the Reward contract
             Reward(0xF83f40fcbC9F06BdC3085cD6805659D98B042a82).addToAllowed(nA);
             //Initialize the newly created campaign
-            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], address(BBSTAddr), feesActive, amounts_, stock_);
+            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], address(BBSTAddr), payable(feesAddress), feesActive, amounts_, stock_);
             
             nbCampaign += 1;
 
