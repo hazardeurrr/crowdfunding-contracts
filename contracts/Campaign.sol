@@ -21,7 +21,7 @@ contract Campaign is ICampaign, Context {
     address public campaign_address;
     address public token;  // address of the token used as currency (or address(0) if ETH/BNB is used)
     address public BBSTAddr = address(0x000000000000000000000000000000000000dEaD); // Address of the BBST Token
-    address payable public feesAddress = payable(0xdf823e818D0b16e643A5E182034a24905d38491f); // fees Address
+    address payable public feesAddress = payable(0x0eEB242203a61b57d57eb8d3f9E3ce766B4dA69C); // fees Address
 
     // Starting and ending date for the campaign
     uint public startTimestamp;
