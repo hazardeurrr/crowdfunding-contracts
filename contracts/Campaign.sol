@@ -136,7 +136,7 @@ contract Campaign is ICampaign, Context {
             uint256 feeAmt =  (totalBalance * 35) / 1000;
             uint256 totalForCreator =  totalBalance - feeAmt;
             //Transfer fees to our address
-            payable(0xdf823e818D0b16e643A5E182034a24905d38491f).transfer(feeAmt);
+            payable(feesAddress).transfer(feeAmt);
             //Transfer the rest to the creator
             creator.transfer(totalForCreator);
             emit CreatorPaid(msg.sender, totalForCreator);
@@ -161,7 +161,7 @@ contract Campaign is ICampaign, Context {
         } else {
           uint256 feeAmt = (totalBalance * 35) / 1000;
             uint256 totalForCreator = totalBalance - feeAmt;
-            IERC20(token).transfer(payable(0xdf823e818D0b16e643A5E182034a24905d38491f), feeAmt);
+            IERC20(token).transfer(payable(feesAddress), feeAmt);
             IERC20(token).transfer(creator, totalForCreator);
             emit CreatorPaid(msg.sender, totalForCreator);
         }
