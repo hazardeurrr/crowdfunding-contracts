@@ -31,8 +31,8 @@ contract CampaignFactory is Context {
     address payable public feesAddress = payable(0x0eEB242203a61b57d57eb8d3f9E3ce766B4dA69C); // fees Address
 
     uint256 public nbCampaign; // number of campaigns created with this factory
-
-    bool feesActive = false;
+    uint public baseFeeRate = 35;
+    uint public bbstFeeRate = 0;
 
     modifier isWhitelisted() {
         require(blacklist[msg.sender] == false, "You are not allowed to interract with the contract");
@@ -75,9 +75,14 @@ contract CampaignFactory is Context {
         feesAddress = payable(addr);
     }
 
-    // setting the status of the fees (active or not)
-    function setFeesActive(bool active) external onlyOwner() {
-        feesActive = active;
+    // setting the rate of the fees (for all non BBST tx)
+    function setBaseFeeRate(uint rate) external onlyOwner() {
+        baseFeeRate = rate;
+    }
+
+        // setting the rate of the fees (for BBST tx)
+    function setBaseFeeRate(uint rate) external onlyOwner() {
+        bbstFeeRate = rate;
     }
 
     // **************************** //
@@ -97,9 +102,6 @@ contract CampaignFactory is Context {
     /* Function used to create a new campaign.
     After basic checks on the inputs, create a new instance of Campaign (cloning the master) and initialize it with the parameters */
     function createCampaign(
-        uint goal_,
-        uint startTimestamp_, 
-        uint endTimestamp_,
         uint tokenChoice,   // 0, 1 or 2 : will determine the currency used thanks to the "currencies" mapping
         uint256[] memory amounts_,
         int256[] memory stock_
@@ -112,10 +114,8 @@ contract CampaignFactory is Context {
             address newCampaign = Clones.clone(masterCampaignAddress);
             address payable nA = payable(newCampaign);
 
-            //Add the address of the newly created campaign to the allowed address on the Reward contract
-            Reward(0xF83f40fcbC9F06BdC3085cD6805659D98B042a82).addToAllowed(nA);
             //Initialize the newly created campaign
-            Campaign(nA).initialize(payable(msg.sender), nbCampaign, goal_, startTimestamp_, endTimestamp_, currencies[tokenChoice], address(BBSTAddr), payable(feesAddress), feesActive, amounts_, stock_);
+            Campaign(nA).initialize(payable(msg.sender), nbCampaign, currencies[tokenChoice], address(BBSTAddr), payable(feesAddress), amounts_, stock_, baseFeeRate, bbstFeeRate);
             
             nbCampaign += 1;
 

@@ -2,18 +2,14 @@ pragma solidity ^0.8.0;
 
 interface ICampaign {
     
-    event CampaignCreation(address campaignAddress, address creator, uint timestamp, uint goal, address token);
+    event CampaignCreation(address campaignAddress, address creator, uint timestamp, address token);
     event Participation(address indexed user, uint amount, address campaign, uint indexTier);
     event CreatorPaid(address creator, uint total_amount);
     function initialize(address payable creator_,
         uint campaign_id_,
-        uint goal_,
-        uint startTimestamp_,
-        uint endTimestamp_,
         address token_,
         address bbstAddr_,
         address feesAddr_,
-        bool feesActive,
         uint256[] memory amounts_,
         int256[] memory stock_
         ) external;
