@@ -14,7 +14,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface ICampaignFactory {
    
-    event CampaignCreated(address creator, uint nbCampaign);
+    event CampaignCreated(address campaign, address creator, uint nbCampaign, address token);
 
 
     function createCampaign(
