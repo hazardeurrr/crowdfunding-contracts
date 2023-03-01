@@ -98,16 +98,14 @@ contract Campaign is ICampaign, Context {
 
         uint256 totalBalance = address(this).balance;
 
-            //fees : we take 3.5% of the total balance
-            uint256 feeAmt =  (totalBalance * baseFeeRate) / 1000;
-            uint256 totalForCreator =  totalBalance - feeAmt;
-            //Transfer fees to our address
-            payable(feesAddress).transfer(feeAmt);
-            //Transfer the rest to the creator
-            creator.transfer(totalForCreator);
-            emit CreatorPaid(msg.sender, totalForCreator);
-        }
-
+        //fees : we take 3.5% of the total balance
+        uint256 feeAmt =  (totalBalance * baseFeeRate) / 1000;
+        uint256 totalForCreator =  totalBalance - feeAmt;
+        //Transfer fees to our address
+        payable(feesAddress).transfer(feeAmt);
+        //Transfer the rest to the creator
+        creator.transfer(totalForCreator);
+        emit CreatorPaid(msg.sender, totalForCreator);
     }
 
     //Same function, but for campaigns using ERC20
@@ -149,7 +147,7 @@ contract Campaign is ICampaign, Context {
     function participateInERC20(uint indexTier, uint256 amount) payable public returns(bool success) {
         require(amount >= amounts[indexTier], "Amount is not correct");
         require(stock[indexTier] == -1 || stock[indexTier] > 0, "No stock left");
-        
+
         //Calls PaymentHandler with the corresponding data. We delegate the process to this contract to prevent multiple allowance checks
         PaymentHandler(0x8BdCf141A050078E528afC6a095Db409C90948B1).payInERC20(amount, msg.sender, address(this), token);
 

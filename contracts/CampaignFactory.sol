@@ -81,7 +81,7 @@ contract CampaignFactory is Context {
     }
 
         // setting the rate of the fees (for BBST tx)
-    function setBaseFeeRate(uint rate) external onlyOwner() {
+    function setBbstFeeRate(uint rate) external onlyOwner() {
         bbstFeeRate = rate;
     }
 
