@@ -20,7 +20,9 @@ interface ICampaignFactory {
     function createCampaign(
         uint tokenChoice,
         uint256[] memory amounts_,
-        int256[] memory stock_
+        int256[] memory stock_,
+        string[] memory tokenURIs_,
+        string memory contractURI_
         ) payable external returns(bool);    
 
 }

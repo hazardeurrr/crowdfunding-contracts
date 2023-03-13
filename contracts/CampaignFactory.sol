@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
+import "hardhat/console.sol";
 
 
 // When deploying & initilising
@@ -104,7 +105,9 @@ contract CampaignFactory is Context {
     function createCampaign(
         uint tokenChoice,   // 0, 1 or 2 : will determine the currency used thanks to the "currencies" mapping
         uint256[] memory amounts_,
-        int256[] memory stock_
+        int256[] memory stock_,
+        string[] memory tokenURIs_,
+        string memory contractURI_
         ) payable external isWhitelisted() returns(bool) {
 
             // check if the chosen token index is for BNB (<=> 1), otherwise, check if the index has a corresponding address in the currencies mapping
@@ -115,7 +118,7 @@ contract CampaignFactory is Context {
             address payable nA = payable(newCampaign);
 
             //Initialize the newly created campaign
-            Campaign(nA).initialize(payable(msg.sender), nbCampaign, currencies[tokenChoice], address(BBSTAddr), payable(feesAddress), amounts_, stock_, baseFeeRate, bbstFeeRate);
+            Campaign(nA).initialize(payable(msg.sender), nbCampaign, currencies[tokenChoice], address(BBSTAddr), payable(feesAddress), amounts_, stock_, baseFeeRate, bbstFeeRate, tokenURIs_, contractURI_);
             
             nbCampaign += 1;
 

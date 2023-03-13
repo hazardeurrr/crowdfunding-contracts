@@ -13,7 +13,9 @@ interface ICampaign {
         uint256[] memory amounts_,
         int256[] memory stock_,
         uint baseFeeRate_,
-        uint bbstFeeRate_
+        uint bbstFeeRate_,
+        string[] memory tokenURIs_,
+        string memory contractURI_
         ) external;
     function payCreator() external;
     function payCreatorERC20() external;

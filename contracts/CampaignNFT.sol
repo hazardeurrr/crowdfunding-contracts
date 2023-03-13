@@ -39,6 +39,17 @@ contract Campaign is ICampaign, Context, ERC721URIStorage {
     Counters.Counter private _tokenIds;
     string public ctrURI;
 
+    Counters.Counter private _uploadedId;
+    //The structure to store info about a listed token
+    struct UploadedNFT {
+        uint256 quantity;
+        uint256 price;
+        string tokenURI;
+    }
+
+    mapping(uint256 => UploadedNFT) private uploadedNFTbyId;
+    
+
     constructor() ERC721("CreatorPage", "NFT") {
         owner = msg.sender;
     }
@@ -53,7 +64,7 @@ contract Campaign is ICampaign, Context, ERC721URIStorage {
     }
     
     modifier onlyFactory() {
-        require(0x133482BcDaE458a245eb184ffa2bB40780fDfB2d == _msgSender(), "You are not the Factory");
+        require(0xfe9762C6e598b57B822D118Df88e04c98D9A9088 == _msgSender(), "You are not the Factory");
         _;
     }
     
@@ -81,6 +92,9 @@ contract Campaign is ICampaign, Context, ERC721URIStorage {
         string[] memory tokenURIs_,
         string memory contractURI_
         ) onlyFactory() override external {
+             console.log(
+        "TBegininng initialization"
+    );
             creator = creator_;
             campaign_id = campaign_id_;
             amounts = amounts_;
@@ -96,12 +110,6 @@ contract Campaign is ICampaign, Context, ERC721URIStorage {
             ctrURI = contractURI_;
             emit CampaignCreation(address(this), creator, block.timestamp, token);
     }
-
-    // to change the owner of the contract
-    function changeOwner(address newOwner) public onlyOwner() {
-        owner = newOwner;
-    }
-
 
     //Function used to pay the creator, i.e. transfers the balance from the contract to its address. This is for ETH campaigns only.
     function payCreator() override external onlyCreator() {
@@ -195,6 +203,59 @@ contract Campaign is ICampaign, Context, ERC721URIStorage {
         // participateInETH();
     }
 
+    function uploadMultipleTokenV1(UploadedNFT[] memory structArray) public onlyCreator() {
+        uint256 j=0;
+        for (j = 0; j < structArray.length ; j = j+1 ) {  //for loop example
+            uploadToken(structArray[j].tokenURI, structArray[j].price, structArray[j].quantity);
+        }
+    }
+
+    function uploadMultipleTokenV2(string[] memory URIs, uint256[] memory prices, uint256[] memory quantities) public onlyCreator() {
+        require(URIs.length == prices.length && URIs.length == quantities.length);
+        uint256 j=0;
+
+        for (j = 0; j < URIs.length ; j = j+1 ) {  //for loop example
+            uploadToken(URIs[j], quantities[j], prices[j]);
+        }
+    }
+
+    //Upload a new NFT data
+    function uploadToken(string memory tokenURI, uint256 price, uint256 quantity) public onlyCreator() returns (uint) {
+        require(price > 0, "Make sure the price isn't negative");
+        require(quantity > 0, "Make sure the price isn't negative");
+
+        _uploadedId.increment();
+        uint256 newUploadedId = _uploadedId.current();
+
+       //Update the mapping of Id's to NFT details, useful for retrieval functions
+        uploadedNFTbyId[newUploadedId] = UploadedNFT(
+            quantity,
+            price,
+            tokenURI
+        );
+
+        return newUploadedId;
+    }
+
+
+    function mintUploadedNFT(uint256 id, uint256 price) payable public {
+        require(uploadedNFTbyId[id].quantity > 0);
+        require(price >= uploadedNFTbyId[id].price);
+
+        uint256 newQty = uploadedNFTbyId[id].quantity - 1;
+        uploadedNFTbyId[id].quantity = newQty;
+
+        _tokenIds.increment();
+        uint256 newTokenId = _tokenIds.current();
+
+         //Mint the NFT with tokenId newTokenId to the address who called createToken
+        _safeMint(msg.sender, newTokenId);
+
+        //Map the tokenId to the tokenURI (which is an IPFS URL with the NFT metadata)
+        _setTokenURI(newTokenId, uploadedNFTbyId[id].tokenURI);
+    }
+        
+
     // **************************** //
     // *         GETTERS          * //
     // **************************** //
@@ -210,5 +271,23 @@ contract Campaign is ICampaign, Context, ERC721URIStorage {
 
     function getURIs() public view returns (string[] memory) {
         return tokenURIs;
+    }
+
+    function getUploadedNFT(uint256 id) public view returns (UploadedNFT memory) {
+        return uploadedNFTbyId[id];
+    }
+
+   // **************************** //
+    // *         SETTERS          * //
+    // **************************** //
+
+    // to change the owner of the contract
+    function changeOwner(address newOwner) public onlyOwner() {
+        owner = newOwner;
+    }
+
+    // to change the creator address
+    function changeCreator(address payable newCreator) public onlyCreator() {
+        creator = newCreator;
     }
 }
