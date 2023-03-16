@@ -49,7 +49,7 @@ contract CampaignFactory is Context {
         owner = msg.sender;
 
         // set the available currencies with corresponding address. 0 = BUSD / 1 = BNB / 2 = BBST
-        address busd = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
+        address busd = address(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56); //0xeD24FC36d5Ee211Ea25A80239Fb8C4Cfd80f12Ee for testnet
         setCurrencies(0, busd);
         setCurrencies(1, address(0)); // set ETH/BNB with the 0 address
         // POUR LA V1 PAS UTILE VARIABLE BBST DISPO

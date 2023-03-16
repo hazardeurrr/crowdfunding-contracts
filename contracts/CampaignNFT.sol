@@ -203,21 +203,6 @@ contract Campaign is ICampaign, Context, ERC721URIStorage {
         // participateInETH();
     }
 
-    function uploadMultipleTokenV1(UploadedNFT[] memory structArray) public onlyCreator() {
-        uint256 j=0;
-        for (j = 0; j < structArray.length ; j = j+1 ) {  //for loop example
-            uploadToken(structArray[j].tokenURI, structArray[j].price, structArray[j].quantity);
-        }
-    }
-
-    function uploadMultipleTokenV2(string[] memory URIs, uint256[] memory prices, uint256[] memory quantities) public onlyCreator() {
-        require(URIs.length == prices.length && URIs.length == quantities.length);
-        uint256 j=0;
-
-        for (j = 0; j < URIs.length ; j = j+1 ) {  //for loop example
-            uploadToken(URIs[j], quantities[j], prices[j]);
-        }
-    }
 
     //Upload a new NFT data
     function uploadToken(string memory tokenURI, uint256 price, uint256 quantity) public onlyCreator() returns (uint) {
@@ -238,9 +223,9 @@ contract Campaign is ICampaign, Context, ERC721URIStorage {
     }
 
 
-    function mintUploadedNFT(uint256 id, uint256 price) payable public {
+    function mintUploadedNFT(uint256 id) payable public {
         require(uploadedNFTbyId[id].quantity > 0);
-        require(price >= uploadedNFTbyId[id].price);
+        require(msg.value >= uploadedNFTbyId[id].price);
 
         uint256 newQty = uploadedNFTbyId[id].quantity - 1;
         uploadedNFTbyId[id].quantity = newQty;
